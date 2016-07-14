@@ -61,6 +61,8 @@
 
 #include <inttypes.h>
 #include <string.h>
+#include <stdlib.h>
+#include <debug.h>
 
 #define IBSS_ATTR
 #define ICODE_ATTR
@@ -74,10 +76,6 @@
 /* This codec supports SID Files:
  * 
  */
-
-#if 0
-static int32_t samples[CHUNK_SIZE] IBSS_ATTR;   /* The sample buffer */
-#endif
 
 void sidPoke(int reg, unsigned char val) ICODE_ATTR;
 
@@ -179,7 +177,7 @@ static unsigned short wval IDATA_ATTR;
 static unsigned char a,x,y,s,p IDATA_ATTR;
 static unsigned short pc IDATA_ATTR;
 
-static unsigned char memory[65536];
+unsigned char memory[65536];
 
 /* ----------------------------------------- Variables for sample stuff */
 static int sample_active IDATA_ATTR;
@@ -350,7 +348,6 @@ static inline int GenerateDigi(int sIn)
 
 /* ------------------------------------------------------------- synthesis
    initialize SID and frequency dependant values */
-void synth_init(unsigned long mixfrq) ICODE_ATTR;
 void synth_init(unsigned long mixfrq)
 {
 #ifndef ROCKBOX
@@ -375,7 +372,6 @@ void synth_init(unsigned long mixfrq)
 }
 
 /* render a buffer of n samples with the actual register contents */
-void synth_render (int32_t *buffer, unsigned long len) ICODE_ATTR;
 void synth_render (int32_t *buffer, unsigned long len)
 {
     unsigned long bp;
@@ -563,8 +559,9 @@ void synth_render (int32_t *buffer, unsigned long len)
         if (filter.b_ena) outf+=quickfloat_ConvertToInt(filter.b);
         if (filter.h_ena) outf+=quickfloat_ConvertToInt(filter.h);
 
-        int final_sample = (filter.vol*(outo+outf));        
-        *(buffer+bp)= GenerateDigi(final_sample)<<13;
+        int final_sample = (filter.vol*(outo+outf));
+        int digi = GenerateDigi(final_sample);
+        *(buffer+bp)= digi;
 #endif
 #ifndef USE_FILTER
         *(buffer+bp) = GenerateDigi(outf)<<3;
@@ -584,6 +581,7 @@ static inline unsigned char getmem(unsigned short addr)
 
 static inline void setmem(unsigned short addr, unsigned char value)
 {
+    DBG_PRINTF("setmem $%04X: $%02X\n", addr, value);
     if ((addr&0xfc00)==0xd400)
     {        
         sidPoke(addr&0x1f,value);    
@@ -639,7 +637,6 @@ static inline void setmem(unsigned short addr, unsigned char value)
 /*
 * Poke a value into the sid register
 */
-void sidPoke(int reg, unsigned char val) ICODE_ATTR;
 void sidPoke(int reg, unsigned char val)
 {
     int voice=0;
@@ -855,7 +852,6 @@ static inline void branch(int flag)
     if (flag) pc=wval;
 }
 
-void cpuReset(void) ICODE_ATTR;
 void cpuReset(void)
 {
     a=x=y=0;
@@ -864,7 +860,6 @@ void cpuReset(void)
     pc=getaddr(0xfffc);  
 }
 
-void cpuResetTo(unsigned short npc, unsigned char na) ICODE_ATTR;
 void cpuResetTo(unsigned short npc, unsigned char na)
 {
     a=na;
@@ -1162,7 +1157,6 @@ static inline void cpuParse(void)
     }        
 }
 
-void cpuJSR(unsigned short npc, unsigned char na) ICODE_ATTR;
 void cpuJSR(unsigned short npc, unsigned char na)
 {  
     a=na;
@@ -1179,7 +1173,6 @@ void cpuJSR(unsigned short npc, unsigned char na)
  
 }
 
-void c64Init(int nSampleRate)  ICODE_ATTR;
 void c64Init(int nSampleRate)
 {        
     synth_init(nSampleRate);
@@ -1190,8 +1183,6 @@ void c64Init(int nSampleRate)
 
 
 
-unsigned short LoadSIDFromMemory(void *pSidData, unsigned short *load_addr,
-                       unsigned short *init_addr, unsigned short *play_addr, unsigned char *subsongs, unsigned char *startsong, unsigned char *speed, unsigned short size)  ICODE_ATTR;
 unsigned short LoadSIDFromMemory(void *pSidData, unsigned short *load_addr,
                        unsigned short *init_addr, unsigned short *play_addr, unsigned char *subsongs, unsigned char *startsong, unsigned char *speed, unsigned short size)
 {

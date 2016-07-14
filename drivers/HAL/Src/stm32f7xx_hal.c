@@ -52,8 +52,6 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "../../HAL/Inc/stm32f7xx_hal.h"
-#include <FreeRTOS.h>
-#include <task.h>
 
 /** @addtogroup STM32F7xx_HAL_Driver
   * @{
@@ -162,6 +160,9 @@ HAL_StatusTypeDef HAL_Init(void)
 
   /* Set Interrupt Group Priority */
   HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
+
+  /* Use systick as time base source and configure 1ms tick (default clock after Reset is HSI) */
+  HAL_InitTick(TICK_INT_PRIORITY);
 
   /* Init the low level hardware */
   HAL_MspInit();
@@ -277,6 +278,11 @@ __weak HAL_StatusTypeDef HAL_InitTick(uint32_t TickPriority)
   * @{
   */
 
+__weak void HAL_IncTick(void)
+{
+  uwTick++;
+}
+
 /**
   * @brief Provides a tick value in millisecond.
   * @note This function is declared as __weak to be overwritten in case of other 
@@ -285,7 +291,7 @@ __weak HAL_StatusTypeDef HAL_InitTick(uint32_t TickPriority)
   */
 __weak uint32_t HAL_GetTick(void)
 {
-  return xTaskGetTickCount();
+    return uwTick;
 }
 
 /**
@@ -301,7 +307,11 @@ __weak uint32_t HAL_GetTick(void)
   */
 __weak void HAL_Delay(__IO uint32_t Delay)
 {
-  vTaskDelay(Delay);
+    uint32_t tickstart = 0;
+  tickstart = HAL_GetTick();
+  while((HAL_GetTick() - tickstart) < Delay)
+  {
+  }
 }
 
 /**

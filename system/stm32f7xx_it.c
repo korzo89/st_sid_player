@@ -68,6 +68,11 @@ extern SD_HandleTypeDef uSdHandle;
 /*            Cortex-M7 Processor Exceptions Handlers                         */
 /******************************************************************************/
 
+void SysTick_Handler(void)
+{
+    HAL_IncTick();
+}
+
 /**
   * @brief   This function handles NMI exception.
   * @param  None
