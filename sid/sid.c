@@ -581,7 +581,6 @@ static inline unsigned char getmem(unsigned short addr)
 
 static inline void setmem(unsigned short addr, unsigned char value)
 {
-    DBG_PRINTF("setmem $%04X: $%02X\n", addr, value);
     if ((addr&0xfc00)==0xd400)
     {        
         sidPoke(addr&0x1f,value);    

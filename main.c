@@ -3,18 +3,21 @@
 #include <stm32f7xx_hal.h>
 #include <stm32746g_discovery.h>
 #include <stm32746g_discovery_lcd.h>
+#include <stm32746g_discovery_ts.h>
 #include <fatfs.h>
 #include <ff.h>
 #include <debug.h>
 #include <stdlib.h>
 #include <sid/sid.h>
 #include <protothreads/pt.h>
+#include <string.h>
+#include <stdbool.h>
 
 //----------------------------------------------
 
-#define SAMPLE_RATE         11025
-#define CHUNK_SIZE          (20 * 1024)
-#define AUDIO_BUFFER_SIZE   (4 * CHUNK_SIZE)
+#define SAMPLE_RATE         AUDIO_FREQUENCY_48K
+#define CHUNK_SIZE          (10 * 1024)
+#define AUDIO_BUFFER_SIZE   (2 * CHUNK_SIZE)
 
 static void SystemClock_Config(void);
 
@@ -43,6 +46,7 @@ static uint16_t audio_buffer[AUDIO_BUFFER_SIZE];
 static void raise_error(const char *message)
 {
     DBG_PRINTF("ERROR: %s\n", message);
+    asm volatile("bkpt 1");
     while (1)
     {
     }
@@ -50,26 +54,16 @@ static void raise_error(const char *message)
 
 //----------------------------------------------
 
-//static uint16_t reverse(uint16_t x)
-//{
-//  int intSize = 16;
-//  uint16_t y=0;
-//  for(int position=intSize-1; position>0; position--){
-//    y+=((x&1)<<position);
-//    x >>= 1;
-//  }
-//  return y;
-//}
-
 static inline uint16_t map_sample(int32_t x)
 {
-    return x + 32768;
+    return (x + 32768) >> 4;
 }
 
-static void generate_samples(void)
+static void generate_samples(size_t offset, size_t length)
 {
+    DBG_PRINTF("generate_samples, offset %u length %u\n", offset, length);
     nSamplesRendered = 0;
-    while (nSamplesRendered < CHUNK_SIZE)
+    while (nSamplesRendered < length)
     {
         if (nSamplesToRender == 0)
         {
@@ -99,12 +93,10 @@ static void generate_samples(void)
     }
 
     uint32_t i, j;
-    for (i = 0, j = 0; i < CHUNK_SIZE; i += 1, j += 4)
+    for (i = 0, j = offset * 2; i < length; i += 1, j += 2)
     {
         audio_buffer[j] = map_sample(samples[i]);
         audio_buffer[j + 1] = audio_buffer[j];
-        audio_buffer[j + 2] = 0;
-        audio_buffer[j + 3] = 0;
     }
 }
 
@@ -117,12 +109,10 @@ static PT_THREAD(test_thread(struct pt *pt))
     while (1)
     {
         state = AUDIO_STATE_BUSY;
-//        DBG_PRINTF("AUDIO_STATE_BUSY\n");
         PT_WAIT_UNTIL(pt, state == AUDIO_STATE_HALF_COMPLETE);
-//        DBG_PRINTF("AUDIO_STATE_HALF_COMPLETE\n");
+        generate_samples(0, CHUNK_SIZE / 2);
         PT_WAIT_UNTIL(pt, state == AUDIO_STATE_COMPLETE);
-//        DBG_PRINTF("AUDIO_STATE_COMPLETE\n");
-        generate_samples();
+        generate_samples(CHUNK_SIZE / 2, CHUNK_SIZE / 2);
     }
 
     PT_END(pt);
@@ -151,6 +141,8 @@ static void general_task(void *p)
     /* Set the LCD Text Color */
     BSP_LCD_SetTextColor(LCD_COLOR_DARKBLUE);
 
+    BSP_TS_Init(BSP_LCD_GetXSize(), BSP_LCD_GetYSize());
+
     MX_FATFS_Init();
 
     FATFS fs;
@@ -161,32 +153,85 @@ static void general_task(void *p)
         raise_error("f_mount failed\n");
 
 #if 1
-    DIR dir;
-    res = f_opendir(&dir, "/");
-    if (res != FR_OK)
-        raise_error("f_opendir failed\n");
+    char curr_path[_MAX_LFN + 1] = "";
 
-    FILINFO info;
-    while (f_readdir(&dir, &info) == FR_OK)
+    #define MAX_ENTRIES 11
+    static char entries[MAX_ENTRIES][13];
+    size_t num_entries = 0;
+
+    bool has_file = false;
+    while (!has_file)
     {
-        if (info.fname[0] == '\0')
-            break;
+        DBG_PRINTF("curr_path: %s/\n", curr_path);
 
-        DBG_PRINTF("* %s\n", info.fname);
+        DIR dir;
+        res = f_opendir(&dir, curr_path);
+        if (res != FR_OK)
+            raise_error("f_opendir failed\n");
+
+        strcat(curr_path, "/");
+
+        BSP_LCD_Clear(LCD_COLOR_WHITE);
+
+        uint16_t line = 0;
+        for (num_entries = 0; num_entries < MAX_ENTRIES; num_entries++)
+        {
+            FILINFO info;
+            if (f_readdir(&dir, &info) != FR_OK)
+                raise_error("f_readdir failed\n");
+
+            if (info.fname[0] == '\0')
+                break;
+
+            strcpy(entries[num_entries], info.fname);
+
+            BSP_LCD_DisplayStringAtLine(line++, (uint8_t*)info.fname);
+        }
+
+        while (1)
+        {
+            TS_StateTypeDef ts;
+            BSP_TS_GetState(&ts);
+            if (ts.touchDetected)
+            {
+                uint16_t ts_line = ts.touchY[0] / BSP_LCD_GetFont()->Height;
+                if (ts_line < num_entries)
+                {
+                    while (ts.touchDetected)
+                        BSP_TS_GetState(&ts);
+
+                    strcat(curr_path, entries[ts_line]);
+
+                    FILINFO info;
+                    if (f_stat(curr_path, &info) != FR_OK)
+                        raise_error("f_stat failed\n");
+
+                    if (!(info.fattrib & AM_DIR))
+                        has_file = true;
+
+                    f_closedir(&dir);
+                    break;
+                }
+            }
+        }
     }
 #endif
 
-    const char *file_path = "/MUSICI~1/B/BRANDIS/Axel_F~1.SID";
+//    const char *file_path = "/MUSICI~1/B/BRANDIS/FADE_T~1.SID";
+//    const char *file_path = "/MUSICI~1/B/BRANDIS/AXEL_F~1.SID";
+
+    BSP_LCD_Clear(LCD_COLOR_WHITE);
+    BSP_LCD_DisplayStringAtLine(0, (uint8_t*)curr_path);
 
     FILINFO file_info;
-    res = f_stat(file_path, &file_info);
+    res = f_stat(curr_path, &file_info);
     if (res != FR_OK)
         raise_error("f_stat failed\n");
 
     DBG_PRINTF("size %d\n", file_info.fsize);
 
     FIL file;
-    res = f_open(&file, file_path, FA_READ);
+    res = f_open(&file, curr_path, FA_READ);
     if (res != FR_OK)
         raise_error("f_open failed\n");
 
@@ -207,15 +252,15 @@ static void general_task(void *p)
     sidPoke(24, 15);
     cpuJSR(init_addr, 0);
 
-    generate_samples();
+    generate_samples(0, CHUNK_SIZE);
 
-    if (BSP_AUDIO_OUT_Init(OUTPUT_DEVICE_HEADPHONE, 40, SAMPLE_RATE) != AUDIO_OK)
+    if (BSP_AUDIO_OUT_Init(OUTPUT_DEVICE_HEADPHONE, 100, SAMPLE_RATE) != AUDIO_OK)
     {
         SEGGER_RTT_printf(0, "BSP_AUDIO_OUT_Init failed");
         while(1) {};
     }
 
-//    BSP_AUDIO_OUT_SetAudioFrameSlot(CODEC_AUDIOFRAME_SLOT_02);
+    BSP_AUDIO_OUT_SetAudioFrameSlot(CODEC_AUDIOFRAME_SLOT_02);
 
     BSP_AUDIO_OUT_Play(audio_buffer, sizeof(audio_buffer));
 
