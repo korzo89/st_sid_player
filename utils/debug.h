@@ -17,8 +17,10 @@
 #endif
 
 #if CFG_DEBUG_ENABLED
+#define DBG_INIT()              SEGGER_RTT_Init()
 #define DBG_PRINTF(_fmt, ...)   SEGGER_RTT_printf(0, _fmt, ##__VA_ARGS__)
 #else
+#define DBG_INIT()              do{}while(0)
 #define DBG_PRINTF(_fmt, ...)   do{}while(0)
 #endif
 
