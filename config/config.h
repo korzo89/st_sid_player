@@ -17,6 +17,8 @@
 
 #define LCD_FRAME_BUFFER    SDRAM_DEVICE_ADDR
 
+#define ATTRIBUTE_PACKED    __attribute__((packed))
+
 //----------------------------------------------
 
 #endif /* CONFIG_H_ */

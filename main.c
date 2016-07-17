@@ -17,7 +17,6 @@
 
 #define SAMPLE_RATE         AUDIO_FREQUENCY_48K
 #define CHUNK_SIZE          (10 * 1024)
-#define AUDIO_BUFFER_SIZE   (2 * CHUNK_SIZE)
 
 static void SystemClock_Config(void);
 
@@ -28,18 +27,23 @@ enum audio_state
     AUDIO_STATE_COMPLETE
 };
 
-static enum audio_state state = AUDIO_STATE_BUSY;
+struct audio_sample
+{
+    uint16_t left;
+    uint16_t right;
+} ATTRIBUTE_PACKED;
 
-static unsigned short load_addr, init_addr, play_addr;
-static unsigned char sub_songs_max, sub_song, song_speed;
+struct app_ctx
+{
+    enum audio_state state;
 
-static int nSamplesRendered = 0;
-static int nSamplesPerCall = 882;  /* This is PAL SID single speed (44100/50Hz) */
-static int nSamplesToRender = 0;
+    struct sid_info sid;
 
-static int32_t samples[CHUNK_SIZE];
+    uint16_t samples[CHUNK_SIZE];
+    struct audio_sample audio_buffer[CHUNK_SIZE];
+};
 
-static uint16_t audio_buffer[AUDIO_BUFFER_SIZE];
+static struct app_ctx ctx;
 
 //----------------------------------------------
 
@@ -54,49 +58,47 @@ static void raise_error(const char *message)
 
 //----------------------------------------------
 
-static inline uint16_t map_sample(int32_t x)
-{
-    return (x + 32768) >> 4;
-}
-
 static void generate_samples(size_t offset, size_t length)
 {
     DBG_PRINTF("generate_samples, offset %u length %u\n", offset, length);
-    nSamplesRendered = 0;
-    while (nSamplesRendered < length)
+
+    int samples_rendered = 0;
+    int samples_to_render = 0;
+
+    while (samples_rendered < length)
     {
-        if (nSamplesToRender == 0)
+        if (samples_to_render == 0)
         {
-            cpuJSR(play_addr, 0);
+            cpuJSR(ctx.sid.play_addr, 0);
 
             /* Find out if cia timing is used and how many samples
-               have to be calculated for each cpujsr */
-            int nRefreshCIA = (int)(20000*(memory[0xdc04]|(memory[0xdc05]<<8))/0x4c00);
-            if ((nRefreshCIA==0) || (song_speed == 0))
-                nRefreshCIA = 20000;
-            nSamplesPerCall = SAMPLE_RATE*nRefreshCIA/1000000;
+             have to be calculated for each cpujsr */
+            int n_refresh_cia = (int)(20000
+                    * (memory[0xdc04] | (memory[0xdc05] << 8)) / 0x4c00);
+            if ((n_refresh_cia == 0) || (ctx.sid.speed == 0))
+                n_refresh_cia = 20000;
 
-            nSamplesToRender = nSamplesPerCall;
+            samples_to_render = SAMPLE_RATE * n_refresh_cia / 1000000;
         }
-        if (nSamplesRendered + nSamplesToRender > CHUNK_SIZE)
+        if (samples_rendered + samples_to_render > CHUNK_SIZE)
         {
-            synth_render(samples+nSamplesRendered, CHUNK_SIZE-nSamplesRendered);
-            nSamplesToRender -= CHUNK_SIZE-nSamplesRendered;
-            nSamplesRendered = CHUNK_SIZE;
+            sid_synth_render(ctx.samples + samples_rendered, CHUNK_SIZE - samples_rendered);
+            samples_to_render -= CHUNK_SIZE - samples_rendered;
+            samples_rendered = CHUNK_SIZE;
         }
         else
         {
-            synth_render(samples+nSamplesRendered, nSamplesToRender);
-            nSamplesRendered += nSamplesToRender;
-            nSamplesToRender = 0;
+            sid_synth_render(ctx.samples + samples_rendered, samples_to_render);
+            samples_rendered += samples_to_render;
+            samples_to_render = 0;
         }
     }
 
-    uint32_t i, j;
-    for (i = 0, j = offset * 2; i < length; i += 1, j += 2)
+    size_t i, j;
+    for (i = 0, j = offset; i < length; i++, j++)
     {
-        audio_buffer[j] = map_sample(samples[i]);
-        audio_buffer[j + 1] = audio_buffer[j];
+        ctx.audio_buffer[j].left = ctx.samples[i];
+        ctx.audio_buffer[j].right = ctx.samples[i];
     }
 }
 
@@ -108,10 +110,12 @@ static PT_THREAD(test_thread(struct pt *pt))
 
     while (1)
     {
-        state = AUDIO_STATE_BUSY;
-        PT_WAIT_UNTIL(pt, state == AUDIO_STATE_HALF_COMPLETE);
+        ctx.state = AUDIO_STATE_BUSY;
+        PT_WAIT_UNTIL(pt, ctx.state == AUDIO_STATE_HALF_COMPLETE);
+
         generate_samples(0, CHUNK_SIZE / 2);
-        PT_WAIT_UNTIL(pt, state == AUDIO_STATE_COMPLETE);
+        PT_WAIT_UNTIL(pt, ctx.state == AUDIO_STATE_COMPLETE);
+
         generate_samples(CHUNK_SIZE / 2, CHUNK_SIZE / 2);
     }
 
@@ -152,7 +156,6 @@ static void general_task(void *p)
     if (res != FR_OK)
         raise_error("f_mount failed\n");
 
-#if 1
     char curr_path[_MAX_LFN + 1] = "";
 
     #define MAX_ENTRIES 11
@@ -215,10 +218,6 @@ static void general_task(void *p)
             }
         }
     }
-#endif
-
-//    const char *file_path = "/MUSICI~1/B/BRANDIS/FADE_T~1.SID";
-//    const char *file_path = "/MUSICI~1/B/BRANDIS/AXEL_F~1.SID";
 
     BSP_LCD_Clear(LCD_COLOR_WHITE);
     BSP_LCD_DisplayStringAtLine(0, (uint8_t*)curr_path);
@@ -247,22 +246,24 @@ static void general_task(void *p)
     f_close(&file);
 
     c64Init(SAMPLE_RATE);
-    LoadSIDFromMemory(buffer, &load_addr, &init_addr, &play_addr,
-            &sub_songs_max, &sub_song, &song_speed, file_info.fsize);
+
+    sid_load_from_memory(buffer, file_info.fsize, &ctx.sid);
+
+    BSP_LCD_DisplayStringAtLine(2, (uint8_t*)ctx.sid.title);
+    BSP_LCD_DisplayStringAtLine(3, (uint8_t*)ctx.sid.author);
+    BSP_LCD_DisplayStringAtLine(4, (uint8_t*)ctx.sid.released);
+
     sidPoke(24, 15);
-    cpuJSR(init_addr, 0);
+    cpuJSR(ctx.sid.init_addr, 0);
 
     generate_samples(0, CHUNK_SIZE);
 
     if (BSP_AUDIO_OUT_Init(OUTPUT_DEVICE_HEADPHONE, 100, SAMPLE_RATE) != AUDIO_OK)
-    {
-        SEGGER_RTT_printf(0, "BSP_AUDIO_OUT_Init failed");
-        while(1) {};
-    }
+        raise_error("BSP_AUDIO_OUT_Init failed\n");
 
     BSP_AUDIO_OUT_SetAudioFrameSlot(CODEC_AUDIOFRAME_SLOT_02);
 
-    BSP_AUDIO_OUT_Play(audio_buffer, sizeof(audio_buffer));
+    BSP_AUDIO_OUT_Play((uint16_t*)ctx.audio_buffer, sizeof(ctx.audio_buffer));
 
     static struct pt child_pt;
     PT_INIT(&child_pt);
@@ -277,14 +278,14 @@ static void general_task(void *p)
 
 void BSP_AUDIO_OUT_TransferComplete_CallBack(void)
 {
-    if (state == AUDIO_STATE_HALF_COMPLETE)
-        state = AUDIO_STATE_COMPLETE;
+    if (ctx.state == AUDIO_STATE_HALF_COMPLETE)
+        ctx.state = AUDIO_STATE_COMPLETE;
 }
 
 void BSP_AUDIO_OUT_HalfTransfer_CallBack(void)
 {
-    if (state == AUDIO_STATE_BUSY)
-        state = AUDIO_STATE_HALF_COMPLETE;
+    if (ctx.state == AUDIO_STATE_BUSY)
+        ctx.state = AUDIO_STATE_HALF_COMPLETE;
 }
 
 //----------------------------------------------

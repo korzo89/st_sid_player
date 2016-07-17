@@ -8,9 +8,13 @@
 #ifndef SID_SID_H_
 #define SID_SID_H_
 
-void synth_init(unsigned long mixfrq);
+#include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
 
-void synth_render (int32_t *buffer, unsigned long len);
+//----------------------------------------------
+
+void synth_init(unsigned long mixfrq);
 
 void sidPoke(int reg, unsigned char val);
 
@@ -22,9 +26,25 @@ void cpuJSR(unsigned short npc, unsigned char na);
 
 void c64Init(int nSampleRate);
 
-unsigned short LoadSIDFromMemory(void *pSidData, unsigned short *load_addr,
-                       unsigned short *init_addr, unsigned short *play_addr, unsigned char *subsongs, unsigned char *startsong, unsigned char *speed, unsigned short size);
+struct sid_info
+{
+    uint16_t load_addr;
+    uint16_t init_addr;
+    uint16_t play_addr;
+    uint8_t subsongs;
+    uint8_t start_song;
+    uint8_t speed;
+    char title[32];
+    char author[32];
+    char released[32];
+};
+
+bool sid_load_from_memory(void *data, size_t size, struct sid_info *info);
+
+void sid_synth_render(uint16_t *buffer, size_t len);
 
 extern unsigned char memory[];
+
+//----------------------------------------------
 
 #endif /* SID_SID_H_ */

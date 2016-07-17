@@ -59,6 +59,7 @@
 
 #define USE_FILTER
 
+#include "sid.h"
 #include <inttypes.h>
 #include <string.h>
 #include <stdlib.h>
@@ -371,8 +372,12 @@ void synth_init(unsigned long mixfrq)
     osc[2].noiseval = 0xffffff;  
 }
 
-/* render a buffer of n samples with the actual register contents */
-void synth_render (int32_t *buffer, unsigned long len)
+static inline uint16_t map_sample(int32_t x)
+{
+    return (x + 32768) >> 4;
+}
+
+void sid_synth_render(uint16_t *buffer, size_t len)
 {
     unsigned long bp;
     /* step 1: convert the not easily processable sid registers into some
@@ -560,11 +565,12 @@ void synth_render (int32_t *buffer, unsigned long len)
         if (filter.h_ena) outf+=quickfloat_ConvertToInt(filter.h);
 
         int final_sample = (filter.vol*(outo+outf));
-        int digi = GenerateDigi(final_sample);
-        *(buffer+bp)= digi;
+        int32_t digi = GenerateDigi(final_sample);
+
+        *(buffer+bp) = map_sample(digi);
 #endif
 #ifndef USE_FILTER
-        *(buffer+bp) = GenerateDigi(outf)<<3;
+        *(buffer+bp) = map_sample(GenerateDigi(outf));
 #endif
     }
 }
@@ -1180,162 +1186,46 @@ void c64Init(int nSampleRate)
     cpuReset();    
 }
 
-
-
-unsigned short LoadSIDFromMemory(void *pSidData, unsigned short *load_addr,
-                       unsigned short *init_addr, unsigned short *play_addr, unsigned char *subsongs, unsigned char *startsong, unsigned char *speed, unsigned short size)
+bool sid_load_from_memory(void *data, size_t size, struct sid_info *info)
 {
+    if (!data || !size || !info)
+        return false;
+
     unsigned char *pData;
     unsigned char data_file_offset;
 
-    pData = (unsigned char*)pSidData;
+    pData = (unsigned char*)data;
     data_file_offset = pData[7];
 
-    *load_addr = pData[8]<<8;
-    *load_addr|= pData[9];
+    info->load_addr = pData[8]<<8;
+    info->load_addr|= pData[9];
 
-    *init_addr = pData[10]<<8;
-    *init_addr|= pData[11];
+    info->init_addr = pData[10]<<8;
+    info->init_addr|= pData[11];
 
-    *play_addr = pData[12]<<8;
-    *play_addr|= pData[13];
+    info->play_addr = pData[12]<<8;
+    info->play_addr|= pData[13];
 
-    *subsongs = pData[0xf]-1;
-    *startsong = pData[0x11]-1;
+    info->subsongs = pData[0xf]-1;
+    info->start_song = pData[0x11]-1;
 
-    *load_addr = pData[data_file_offset];
-    *load_addr|= pData[data_file_offset+1]<<8;
+    info->load_addr = pData[data_file_offset];
+    info->load_addr|= pData[data_file_offset+1]<<8;
     
-    *speed = pData[0x15];
+    info->speed = pData[0x15];
     
     memset(memory, 0, sizeof(memory));
-    memcpy(&memory[*load_addr], &pData[data_file_offset+2], size-(data_file_offset+2));
+    memcpy(&memory[info->load_addr], &pData[data_file_offset+2], size-(data_file_offset+2));
     
-    if (*play_addr == 0)
+    strcpy(info->title, (const char*)&pData[0x16]);
+    strcpy(info->author, (const char*)&pData[0x36]);
+    strcpy(info->released, (const char*)&pData[0x56]);
+
+    if (info->play_addr == 0)
     {
-        cpuJSR(*init_addr, 0);
-        *play_addr = (memory[0x0315]<<8)+memory[0x0314];
+        cpuJSR(info->init_addr, 0);
+        info->play_addr = (memory[0x0315]<<8)+memory[0x0314];
     }
 
-    return *load_addr;
+    return true;
 }
-
-#if 0
-
-static int nSamplesRendered = 0;
-static int nSamplesPerCall = 882;  /* This is PAL SID single speed (44100/50Hz) */
-static int nSamplesToRender = 0;
-
-
-/* this is the codec entry point */
-enum codec_status codec_main(enum codec_entry_call_reason reason)
-{
-    if (reason == CODEC_LOAD) {
-        /* Make use of 44.1khz */
-        ci->configure(DSP_SET_FREQUENCY, SAMPLE_RATE);
-        /* Sample depth is 28 bit host endian */
-        ci->configure(DSP_SET_SAMPLE_DEPTH, 28);
-        /* Mono output */
-        ci->configure(DSP_SET_STEREO_MODE, STEREO_MONO);
-    }
-
-    return CODEC_OK;
-}
-
-/* this is called for each file to process */
-enum codec_status codec_run(void)
-{
-    size_t filesize;
-    unsigned short load_addr, init_addr, play_addr;
-    unsigned char subSongsMax, subSong, song_speed;
-    unsigned char *sidfile = NULL;
-    intptr_t param;
-    bool resume;
-
-    if (codec_init()) {
-        return CODEC_ERROR;
-    }
-
-    codec_set_replaygain(ci->id3);
-    
-    /* Load SID file the read_filebuf callback will return the full requested
-     * size if at all possible, so there is no need to loop */
-    ci->seek_buffer(0);
-    sidfile = ci->request_buffer(&filesize, SID_BUFFER_SIZE);
-
-    if (filesize == 0) {
-        return CODEC_ERROR;
-    }
-    
-    param = ci->id3->elapsed;
-    resume = param != 0;
-    
-    goto sid_start;
-
-    /* The main decoder loop */    
-    while (1) {
-        enum codec_command_action action = ci->get_command(&param);
-
-        if (action == CODEC_ACTION_HALT)
-            break;
-
-        if (action == CODEC_ACTION_SEEK_TIME) {
-        sid_start:
-            /* New time is ready in param */
-
-            /* Start playing from scratch */
-            c64Init(SAMPLE_RATE);
-            LoadSIDFromMemory(sidfile, &load_addr, &init_addr, &play_addr,
-                              &subSongsMax, &subSong, &song_speed,
-                              (unsigned short)filesize);
-            sidPoke(24, 15);            /* Turn on full volume */            
-            if (!resume || (resume && param))
-                subSong = param / 1000; /* Now use the current seek time in
-                                           seconds as subsong */
-            cpuJSR(init_addr, subSong); /* Start the song initialize */
-            nSamplesToRender = 0;       /* Start the rendering from scratch */
-
-            /* Set the elapsed time to the current subsong (in seconds) */
-            ci->set_elapsed(subSong*1000);
-            ci->seek_complete();
-
-            resume = false;
-        }
-        
-        nSamplesRendered = 0;
-        while (nSamplesRendered < CHUNK_SIZE)
-        {
-            if (nSamplesToRender == 0)
-            {
-                cpuJSR(play_addr, 0);
-                
-                /* Find out if cia timing is used and how many samples
-                   have to be calculated for each cpujsr */
-                int nRefreshCIA = (int)(20000*(memory[0xdc04]|(memory[0xdc05]<<8))/0x4c00); 
-                if ((nRefreshCIA==0) || (song_speed == 0)) 
-                    nRefreshCIA = 20000;
-                nSamplesPerCall = mixing_frequency*nRefreshCIA/1000000;
-          
-                nSamplesToRender = nSamplesPerCall;
-            }
-            if (nSamplesRendered + nSamplesToRender > CHUNK_SIZE)
-            {
-                synth_render(samples+nSamplesRendered, CHUNK_SIZE-nSamplesRendered);
-                nSamplesToRender -= CHUNK_SIZE-nSamplesRendered;
-                nSamplesRendered = CHUNK_SIZE;
-            }
-            else
-            {
-                synth_render(samples+nSamplesRendered, nSamplesToRender);
-                nSamplesRendered += nSamplesToRender;
-                nSamplesToRender = 0;
-            } 
-        }
-        
-        ci->pcmbuf_insert(samples, NULL, CHUNK_SIZE);
-    }
-
-    return CODEC_OK;
-}
-
-#endif
