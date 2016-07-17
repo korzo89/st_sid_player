@@ -12,6 +12,7 @@
 #include <protothreads/pt.h>
 #include <string.h>
 #include <stdbool.h>
+#include <GUI.h>
 
 //----------------------------------------------
 
@@ -126,6 +127,12 @@ static PT_THREAD(test_thread(struct pt *pt))
 
 static void general_task(void *p)
 {
+    BSP_SDRAM_Init();
+    __HAL_RCC_CRC_CLK_ENABLE();
+
+    GUI_Init();
+    GUI_DispStringAt("Starting...", 0, 0);
+
     BSP_LED_Init(LED1);
 
     /* Configure the User Button in GPIO Mode */

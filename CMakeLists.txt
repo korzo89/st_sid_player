@@ -21,6 +21,7 @@ project(st_sid_player C ASM)
 add_definitions(-DSTM32F746xx)
 add_definitions(-DUSE_HAL_DRIVER)
 add_definitions(-DUSE_STM32746G_DISCO)
+add_definitions(-D__FPU_PRESENT=1)
 
 include_directories(.)
 include_directories(config)
@@ -31,8 +32,10 @@ include_directories(drivers/HAL/Inc)
 include_directories(drivers/BSP/STM32746G-Discovery)
 include_directories(drivers/FatFs/src)
 include_directories(utils)
+include_directories(utils/STemWin/inc)
 
 aux_source_directory(. SRC)
+aux_source_directory(config SRC)
 aux_source_directory(system SRC)
 aux_source_directory(drivers/BSP/STM32746G-Discovery SRC)
 aux_source_directory(drivers/BSP/Components/wm8994 SRC)
@@ -43,10 +46,15 @@ aux_source_directory(drivers/FatFs/src/drivers SRC)
 aux_source_directory(drivers/FatFs/src/option SRC)
 aux_source_directory(sid SRC)
 aux_source_directory(utils/RTT SRC)
+aux_source_directory(utils/STemWin/OS SRC)
 
 set(SRC ${SRC} system/startup_stm32f746xx.s)
 set_source_files_properties(system/startup_stm32f746xx.s PROPERTIES COMPILE_FLAGS "-x assembler-with-cpp")
 
+link_directories(utils/STemWin/Lib)
+
 add_executable(${TARGET_NAME} ${SRC})
+
+target_link_libraries(${TARGET_NAME} STemWin528_CM7_GCC)
 
 set_target_properties(${TARGET_NAME} PROPERTIES LINK_FLAGS "-T linker.ld -Wl,-Map=${TARGET_NAME}.map -Wl,--gc-sections")

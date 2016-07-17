@@ -240,6 +240,12 @@ void AUDIO_OUT_SAIx_DMAx_IRQHandler(void)
   HAL_DMA_IRQHandler(haudio_out_sai.hdmatx);
 }
 
+void LTDC_IRQHandler(void)
+{
+    extern LTDC_HandleTypeDef hltdc;
+    HAL_LTDC_IRQHandler(&hltdc);
+}
+
 /**
   * @}
   */ 
