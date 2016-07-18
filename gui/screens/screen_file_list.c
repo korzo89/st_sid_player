@@ -12,8 +12,11 @@
 #include <ff.h>
 #include <string.h>
 #include <app/app_context.h>
+#include <gui/widgets/widget_list.h>
 
 //----------------------------------------------
+
+#define ROOT_DIR    ""
 
 struct wnd_ctx
 {
@@ -37,6 +40,7 @@ static const GUI_WIDGET_CREATE_INFO resources[] = {
     { WINDOW_CreateIndirect, "Window", 0, 0, 0, LCD_WIDTH, LCD_HEIGHT, 0, 0, 0 },
     { LISTBOX_CreateIndirect, "Files", LIST_ID, 10, 10, 300, LCD_HEIGHT - 20, 0 },
     { BUTTON_CreateIndirect, "OPEN", OPEN_ID, LCD_WIDTH - 110, LCD_HEIGHT - 50, 100, 40 },
+//    { widget_list_create, "", 0, 80, 10, 300, LCD_HEIGHT - 20, 0 },
 };
 
 //----------------------------------------------
@@ -50,6 +54,8 @@ static void create(GUI_HWIN wnd)
 
     LISTBOX_SetFont(ctx->list, &GUI_Font32_ASCII);
     LISTBOX_SetAutoScrollV(ctx->list, 1);
+
+    strcpy(ctx->curr_path, ROOT_DIR);
 
     list_curr_dir();
 }
@@ -76,6 +82,9 @@ static void list_curr_dir(void)
 {
     clear_list();
 
+    if (strcmp(ctx->curr_path, ROOT_DIR) != 0)
+        LISTBOX_AddString(ctx->list, "..");
+
     DIR dir;
     FRESULT res = f_opendir(&dir, ctx->curr_path);
     ASSERT_WARN(res == FR_OK);
@@ -100,6 +109,23 @@ static void list_curr_dir(void)
 
 //----------------------------------------------
 
+static void move_to_parent_dir(void)
+{
+    int len = strlen(ctx->curr_path);
+    char *c = ctx->curr_path + (len - 2);
+    do
+    {
+        if (*c == '/')
+        {
+            *c = '\0';
+            return;
+        }
+    }
+    while (c-- != ctx->curr_path);
+}
+
+//----------------------------------------------
+
 static void open_selected_item(void)
 {
     int selected = LISTBOX_GetSel(ctx->list);
@@ -108,15 +134,24 @@ static void open_selected_item(void)
 
     DBG_PRINTF("selected: %s\n", ctx->buffer);
 
-    strcat(ctx->curr_path, ctx->buffer);
+    bool is_dir;
+    if (strcmp(ctx->buffer, "..") == 0)
+    {
+        move_to_parent_dir();
+        is_dir = true;
+    }
+    else
+    {
+        strcat(ctx->curr_path, ctx->buffer);
 
-    DBG_PRINTF("new path: %s\n", ctx->curr_path);
+        FILINFO info;
+        FRESULT res = f_stat(ctx->curr_path, &info);
+        ASSERT_WARN(res == FR_OK);
 
-    FILINFO info;
-    FRESULT res = f_stat(ctx->curr_path, &info);
-    ASSERT_WARN(res == FR_OK);
+        is_dir = !!(info.fattrib & AM_DIR);
+    }
 
-    if (info.fattrib & AM_DIR)
+    if (is_dir)
     {
         list_curr_dir();
         return;

@@ -53,6 +53,7 @@ aux_source_directory(utils SRC)
 aux_source_directory(utils/RTT SRC)
 aux_source_directory(gui SRC)
 aux_source_directory(gui/screens SRC)
+aux_source_directory(gui/widgets SRC)
 aux_source_directory(gui/STemWin/OS SRC)
 
 set(SRC ${SRC} system/startup_stm32f746xx.s)
