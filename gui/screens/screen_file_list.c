@@ -20,7 +20,7 @@ struct wnd_ctx
     GUI_HWIN list;
     GUI_HWIN open;
 
-    char buffer[13];
+    char buffer[_MAX_LFN + 1];
     char curr_path[_MAX_LFN + 1];
 };
 
@@ -81,6 +81,7 @@ static void list_curr_dir(void)
     ASSERT_WARN(res == FR_OK);
 
     strcat(ctx->curr_path, "/");
+    DBG_PRINTF("curr_path: %s\n", ctx->curr_path);
 
     while (1)
     {
@@ -108,6 +109,8 @@ static void open_selected_item(void)
     DBG_PRINTF("selected: %s\n", ctx->buffer);
 
     strcat(ctx->curr_path, ctx->buffer);
+
+    DBG_PRINTF("new path: %s\n", ctx->curr_path);
 
     FILINFO info;
     FRESULT res = f_stat(ctx->curr_path, &info);

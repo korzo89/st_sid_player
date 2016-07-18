@@ -90,10 +90,10 @@ void NMI_Handler(void)
 void HardFault_Handler(void)
 {
     asm volatile ("bkpt 1");
-  /* Go to infinite loop when Hard Fault exception occurs */
-  while (1)
-  {
-  }
+    /* Go to infinite loop when Hard Fault exception occurs */
+    while (1)
+    {
+    }
 }
 
 /**

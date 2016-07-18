@@ -34,6 +34,7 @@
 #endif 
 
 /* Includes ------------------------------------------------------------------*/
+#include <stm32f7xx_hal.h>
 #include "diskio.h"
 #include "ff.h"
 
