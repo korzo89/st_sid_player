@@ -24,7 +24,7 @@ enum widget_list_event
 
 WM_HWIN widget_list_create(const GUI_WIDGET_CREATE_INFO *info, WM_HWIN parent, int x, int y, WM_CALLBACK *cb);
 
-bool widget_list_add_item(WM_HWIN handle, const char *text);
+bool widget_list_add_item(WM_HWIN handle, const char *text, const GUI_BITMAP *icon);
 
 const char* widget_list_get_item(WM_HWIN handle, int index);
 

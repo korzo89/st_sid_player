@@ -24,6 +24,7 @@
 struct list_item
 {
     char *text;
+    const GUI_BITMAP *icon;
     struct list_item *next;
 };
 
@@ -85,7 +86,7 @@ WM_HWIN widget_list_create(const GUI_WIDGET_CREATE_INFO *info, WM_HWIN parent, i
 
 //----------------------------------------------
 
-bool widget_list_add_item(WM_HWIN handle, const char *text)
+bool widget_list_add_item(WM_HWIN handle, const char *text, const GUI_BITMAP *icon)
 {
     if (!handle || !text)
         return false;
@@ -100,6 +101,8 @@ bool widget_list_add_item(WM_HWIN handle, const char *text)
     ASSERT_CRIT(new_item != NULL);
 
     int len = strlen(text) + 1;
+
+    new_item->icon = icon;
 
     new_item->text = malloc(len);
     ASSERT_CRIT(new_item->text != NULL);
@@ -293,9 +296,23 @@ static void paint_widget(struct widget_ctx *ctx, WM_MESSAGE *msg)
     struct list_item *item = ctx->items;
     while (item)
     {
-        GUI_SetColor((i == ctx->selected_item) ? GUI_GREEN : ctx->color);
+        if (item->icon)
+        {
+            GUI_DrawBitmap(item->icon, rect.x0, rect.y0);
 
-        GUI_DispStringInRect(item->text, &rect, GUI_TA_LEFT | GUI_TA_TOP);
+            GUI_SetColor((i == ctx->selected_item) ? GUI_GREEN : ctx->color);
+
+            int text_offset = item->icon->XSize + 10;
+            rect.x0 += text_offset;
+
+            GUI_DispStringInRect(item->text, &rect, GUI_TA_LEFT | GUI_TA_TOP);
+
+            rect.x0 -= text_offset;
+        }
+        else
+        {
+            GUI_DispStringInRect(item->text, &rect, GUI_TA_LEFT | GUI_TA_TOP);
+        }
 
         GUI_MoveRect(&rect, 0, ctx->font->YSize);
 

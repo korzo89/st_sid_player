@@ -62,11 +62,14 @@ static void destroy(void)
 
 static void list_curr_dir(void)
 {
+    extern GUI_CONST_STORAGE GUI_BITMAP bmFolder26;
+    extern GUI_CONST_STORAGE GUI_BITMAP bmMusic26;
+
     widget_list_clear(ctx->list);
     widget_list_set_scroll(ctx->list, 0);
 
     if (strcmp(ctx->curr_path, ROOT_DIR) != 0)
-        widget_list_add_item(ctx->list, "..");
+        widget_list_add_item(ctx->list, "..", &bmFolder26);
 
     DIR dir;
     FRESULT res = f_opendir(&dir, ctx->curr_path);
@@ -84,7 +87,21 @@ static void list_curr_dir(void)
         if (info.fname[0] == '\0')
             break;
 
-        widget_list_add_item(ctx->list, info.fname);
+        bool is_dir = info.fattrib & AM_DIR;
+
+        if (!is_dir)
+        {
+            int len = strlen(info.fname);
+            if (len < 4)
+                continue;
+
+            const char *ext = &info.fname[len - 4];
+            if ((strcmp(ext, ".sid") != 0) && (strcmp(ext, ".SID") != 0))
+                continue;
+        }
+
+        widget_list_add_item(ctx->list, info.fname,
+                info.fattrib & AM_DIR ? &bmFolder26 : &bmMusic26);
     }
 
     f_closedir(&dir);
