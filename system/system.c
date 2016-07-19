@@ -28,6 +28,9 @@ static struct system_ctx ctx;
 
 static void init_system_clock(void)
 {
+    (DBGMCU)->APB1FZ = 0x7E01BFF;
+    (DBGMCU)->APB2FZ = 0x70003;
+
     HAL_StatusTypeDef res;
     RCC_OscInitTypeDef RCC_OscInitStruct;
     RCC_ClkInitTypeDef RCC_ClkInitStruct;

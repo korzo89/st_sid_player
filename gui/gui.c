@@ -9,6 +9,11 @@
 #include "touch.h"
 #include "STemWin/inc/GUI.h"
 #include <assert.h>
+#include <string.h>
+
+//----------------------------------------------
+
+#define EVENT_QUEUE_LEN     10
 
 //----------------------------------------------
 
@@ -17,6 +22,9 @@ struct gui_ctx
     const struct gui_screen *curr_screen;
     const struct gui_screen *next_screen;
     GUI_HWIN curr_wnd;
+
+    struct gui_event events[EVENT_QUEUE_LEN];
+    size_t num_events;
 };
 
 static struct gui_ctx ctx;
@@ -25,34 +33,11 @@ static struct gui_ctx ctx;
 
 void gui_init(void)
 {
+    memset(&ctx, 0, sizeof(ctx));
+
     touch_init();
     GUI_Init();
-}
-
-//----------------------------------------------
-
-static void process_notify_parent(const WM_MESSAGE *msg)
-{
-    if (!ctx.curr_screen || !ctx.curr_screen->handle_event)
-        return;
-
-    ctx.curr_screen->handle_event(msg->hWinSrc, msg->Data.v);
-}
-
-//----------------------------------------------
-
-static void wnd_callback(WM_MESSAGE *msg)
-{
-    switch (msg->MsgId)
-    {
-    case WM_NOTIFY_PARENT:
-        process_notify_parent(msg);
-        break;
-
-    default:
-        WM_DefaultProc(msg);
-        break;
-    }
+    WM_MULTIBUF_Enable(1);
 }
 
 //----------------------------------------------
@@ -80,13 +65,28 @@ static void show_next_screen(void)
 
     ctx.curr_wnd = GUI_CreateDialogBox(
             screen->resources, screen->resources_len,
-            wnd_callback, WM_HBKWIN, 0, 0);
+            WM_DefaultProc, WM_HBKWIN, 0, 0);
 
     if (screen->create)
         screen->create(ctx.curr_wnd);
 
     ctx.curr_screen = screen;
     ctx.next_screen = NULL;
+}
+
+//----------------------------------------------
+
+static void process_events(void)
+{
+    if (!ctx.curr_screen || !ctx.curr_screen->handle_event)
+        goto finish;
+
+    size_t i;
+    for (i = 0; i < ctx.num_events; i++)
+        ctx.curr_screen->handle_event(&ctx.events[i]);
+
+finish:
+    ctx.num_events = 0;
 }
 
 //----------------------------------------------
@@ -101,6 +101,8 @@ void gui_process(void)
 
     touch_process();
     GUI_Exec();
+
+    process_events();
 }
 
 //----------------------------------------------
@@ -108,4 +110,21 @@ void gui_process(void)
 void gui_show_screen(const struct gui_screen *screen)
 {
     ctx.next_screen = screen;
+}
+
+//----------------------------------------------
+
+bool gui_send_event(WM_HWIN sender, uint32_t id, void *data)
+{
+    if (ctx.num_events == EVENT_QUEUE_LEN)
+        return false;
+
+    struct gui_event *event = &ctx.events[ctx.num_events];
+    event->sender = sender;
+    event->id = id;
+    event->data = data;
+
+    ctx.num_events++;
+
+    return true;
 }

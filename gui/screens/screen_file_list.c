@@ -21,9 +21,7 @@
 struct wnd_ctx
 {
     GUI_HWIN list;
-    GUI_HWIN open;
 
-    char buffer[_MAX_LFN + 1];
     char curr_path[_MAX_LFN + 1];
 };
 
@@ -33,14 +31,9 @@ static void list_curr_dir(void);
 
 //----------------------------------------------
 
-#define LIST_ID     WID(1)
-#define OPEN_ID     WID(2)
-
 static const GUI_WIDGET_CREATE_INFO resources[] = {
-    { WINDOW_CreateIndirect, "Window", 0, 0, 0, LCD_WIDTH, LCD_HEIGHT, 0, 0, 0 },
-    { LISTBOX_CreateIndirect, "Files", LIST_ID, 10, 10, 300, LCD_HEIGHT - 20, 0 },
-    { BUTTON_CreateIndirect, "OPEN", OPEN_ID, LCD_WIDTH - 110, LCD_HEIGHT - 50, 100, 40 },
-//    { widget_list_create, "", 0, 80, 10, 300, LCD_HEIGHT - 20, 0 },
+    { WINDOW_CreateIndirect,  "Window", 0,      0, 0, LCD_WIDTH, LCD_HEIGHT, 0, 0, 0 },
+    { widget_list_create,     "",       WID(0), 0, 0, LCD_WIDTH, LCD_HEIGHT, 0 },
 };
 
 //----------------------------------------------
@@ -49,11 +42,9 @@ static void create(GUI_HWIN wnd)
 {
     GUI_ALLOC_CTX(ctx);
 
-    ctx->list = WM_GetDialogItem(wnd, LIST_ID);
-    ctx->open = WM_GetDialogItem(wnd, OPEN_ID);
+    ctx->list = WM_GetDialogItem(wnd, WID(0));
 
-    LISTBOX_SetFont(ctx->list, &GUI_Font32_ASCII);
-    LISTBOX_SetAutoScrollV(ctx->list, 1);
+    widget_list_set_font(ctx->list, &GUI_Font32_ASCII);
 
     strcpy(ctx->curr_path, ROOT_DIR);
 
@@ -69,21 +60,13 @@ static void destroy(void)
 
 //----------------------------------------------
 
-static void clear_list(void)
-{
-    int num = LISTBOX_GetNumItems(ctx->list);
-    while (num--)
-        LISTBOX_DeleteItem(ctx->list, 0);
-}
-
-//----------------------------------------------
-
 static void list_curr_dir(void)
 {
-    clear_list();
+    widget_list_clear(ctx->list);
+    widget_list_set_scroll(ctx->list, 0);
 
     if (strcmp(ctx->curr_path, ROOT_DIR) != 0)
-        LISTBOX_AddString(ctx->list, "..");
+        widget_list_add_item(ctx->list, "..");
 
     DIR dir;
     FRESULT res = f_opendir(&dir, ctx->curr_path);
@@ -101,7 +84,7 @@ static void list_curr_dir(void)
         if (info.fname[0] == '\0')
             break;
 
-        LISTBOX_AddString(ctx->list, info.fname);
+        widget_list_add_item(ctx->list, info.fname);
     }
 
     f_closedir(&dir);
@@ -126,23 +109,21 @@ static void move_to_parent_dir(void)
 
 //----------------------------------------------
 
-static void open_selected_item(void)
+static void list_item_selected(int selected)
 {
-    int selected = LISTBOX_GetSel(ctx->list);
+    const char *item = widget_list_get_item(ctx->list, selected);
 
-    LISTBOX_GetItemText(ctx->list, selected, ctx->buffer, sizeof(ctx->buffer));
-
-    DBG_PRINTF("selected: %s\n", ctx->buffer);
+    DBG_PRINTF("selected: %s\n", item);
 
     bool is_dir;
-    if (strcmp(ctx->buffer, "..") == 0)
+    if (strcmp(item, "..") == 0)
     {
         move_to_parent_dir();
         is_dir = true;
     }
     else
     {
-        strcat(ctx->curr_path, ctx->buffer);
+        strcat(ctx->curr_path, item);
 
         FILINFO info;
         FRESULT res = f_stat(ctx->curr_path, &info);
@@ -164,10 +145,10 @@ static void open_selected_item(void)
 
 //----------------------------------------------
 
-static void handle_event(GUI_HWIN sender, int event)
+static void handle_event(const struct gui_event *event)
 {
-    if ((sender == ctx->open) && (event == WM_NOTIFICATION_RELEASED))
-        open_selected_item();
+    if ((event->sender == ctx->list) && (event->id == WIDGET_LIST_EVENT_SELECTED))
+        list_item_selected((int)event->data);
 }
 
 //----------------------------------------------

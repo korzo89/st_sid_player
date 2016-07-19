@@ -77,7 +77,7 @@ static void destroy(void)
 
 //----------------------------------------------
 
-static void handle_event(GUI_HWIN sender, int event)
+static void handle_event(const struct gui_event *event)
 {
 }
 

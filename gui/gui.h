@@ -10,11 +10,20 @@
 
 #include <config.h>
 #include <stdlib.h>
+#include <stdbool.h>
+#include <stdint.h>
 #include "STemWin/inc/GUI.h"
 #include <WM.h>
 #include <DIALOG.h>
 
 //----------------------------------------------
+
+struct gui_event
+{
+    WM_HWIN sender;
+    uint32_t id;
+    void *data;
+};
 
 struct gui_screen
 {
@@ -22,7 +31,7 @@ struct gui_screen
     size_t resources_len;
     void (*create)(GUI_HWIN wnd);
     void (*destroy)(void);
-    void (*handle_event)(GUI_HWIN sender, int event);
+    void (*handle_event)(const struct gui_event *event);
     void (*process)(void);
 };
 
@@ -59,6 +68,8 @@ void gui_init(void);
 void gui_process(void);
 
 void gui_show_screen(const struct gui_screen *screen);
+
+bool gui_send_event(WM_HWIN sender, uint32_t id, void *data);
 
 //----------------------------------------------
 
