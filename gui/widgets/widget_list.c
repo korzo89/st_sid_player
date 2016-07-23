@@ -12,6 +12,7 @@
 #include <string.h>
 #include <protothreads/pt.h>
 #include <gui/gui.h>
+#include <utils/tween.h>
 
 //----------------------------------------------
 
@@ -30,11 +31,11 @@ struct list_item
 
 struct widget_ctx
 {
-    unsigned short id;
-
     const GUI_FONT *font;
-    int color;
+    int text_color;
+    int icon_color;
     int bg_color;
+    int item_height;
 
     int prev_y;
     int offset;
@@ -43,7 +44,7 @@ struct widget_ctx
     struct list_item *items;
     int num_items;
 
-    struct pt thread;
+    struct pt pt_touch;
 };
 
 static struct widget_ctx* get_context(WM_HWIN handle);
@@ -52,32 +53,37 @@ static void paint_widget(struct widget_ctx *ctx, WM_MESSAGE *msg);
 static void handle_touch(struct widget_ctx *ctx, WM_MESSAGE *msg);
 static void destroy_list_items(struct widget_ctx *ctx);
 
+#define VISUAL_PROPERTY_SETTER(_name, _type, _prop)     \
+    void _name(WM_HWIN handle, _type val)               \
+    {                                                   \
+        if (!handle) return;                            \
+        struct widget_ctx *ctx = get_context(handle);   \
+        if (ctx->_prop == val) return;                  \
+        ctx->_prop = val;                               \
+        WM_InvalidateWindow(handle);                    \
+    }
+
 //----------------------------------------------
 
-WM_HWIN widget_list_create(const GUI_WIDGET_CREATE_INFO *info, WM_HWIN parent, int x, int y, WM_CALLBACK *cb)
+WM_HWIN widget_list_create(int x, int y, int w, int h, WM_HWIN parent, int flags)
 {
-    ASSERT_WARN(info != NULL);
-
-    if (!cb)
-        cb = default_callback;
-
     WM_HWIN handle = WM_CreateWindowAsChild(
-            info->x0, info->y0,
-            info->xSize, info->ySize,
-            parent, 0, cb,
+            x, y, w, h,
+            parent, flags,
+            default_callback,
             sizeof(void*));
 
     struct widget_ctx *ctx = malloc(sizeof(*ctx));
     ASSERT_CRIT(ctx != NULL);
     memset(ctx, 0, sizeof(*ctx));
 
-    ctx->id = info->Id;
     ctx->font = DEFAULT_FONT;
-    ctx->color = DEFAULT_COLOR;
+    ctx->text_color = DEFAULT_COLOR;
+    ctx->icon_color = DEFAULT_COLOR;
     ctx->bg_color = DEFAULT_BG_COLOR;
     ctx->selected_item = -1;
 
-    PT_INIT(&ctx->thread);
+    PT_INIT(&ctx->pt_touch);
 
     WM_SetUserData(handle, &ctx, sizeof(void*));
 
@@ -156,55 +162,17 @@ void widget_list_clear(WM_HWIN handle)
 
 //----------------------------------------------
 
-void widget_list_set_font(WM_HWIN handle, const GUI_FONT *font)
-{
-    if (!handle)
-        return;
+VISUAL_PROPERTY_SETTER(widget_list_set_font, const GUI_FONT*, font);
 
-    get_context(handle)->font = font;
+VISUAL_PROPERTY_SETTER(widget_list_set_bg_color, GUI_COLOR, bg_color);
 
-    WM_InvalidateWindow(handle);
-}
+VISUAL_PROPERTY_SETTER(widget_list_set_text_color, GUI_COLOR, text_color);
 
-//----------------------------------------------
+VISUAL_PROPERTY_SETTER(widget_list_set_icon_color, GUI_COLOR, icon_color);
 
-void widget_list_set_bg_color(WM_HWIN handle, GUI_COLOR color)
-{
-    if (!handle)
-        return;
+VISUAL_PROPERTY_SETTER(widget_list_set_scroll, int, offset);
 
-    get_context(handle)->color = color;
-
-    WM_InvalidateWindow(handle);
-}
-
-//----------------------------------------------
-
-void widget_list_set_color(WM_HWIN handle, GUI_COLOR color)
-{
-    if (!handle)
-        return;
-
-    get_context(handle)->bg_color = color;
-
-    WM_InvalidateWindow(handle);
-}
-
-//----------------------------------------------
-
-void widget_list_set_scroll(WM_HWIN handle, int val)
-{
-    if (!handle)
-        return;
-
-    struct widget_ctx *ctx = get_context(handle);
-
-    if (ctx->offset == val)
-        return;
-    ctx->offset = val;
-
-    WM_InvalidateWindow(handle);
-}
+VISUAL_PROPERTY_SETTER(widget_list_set_item_height, int, item_height);
 
 //----------------------------------------------
 
@@ -250,13 +218,6 @@ static void default_callback(WM_MESSAGE *msg)
 
     switch (msg->MsgId)
     {
-    case WM_SET_ID:
-        ctx->id = msg->Data.v;
-        break;
-    case WM_GET_ID:
-        msg->Data.v = ctx->id;
-        break;
-
     case WM_TOUCH:
         handle_touch(ctx, msg);
         break;
@@ -277,44 +238,63 @@ static void default_callback(WM_MESSAGE *msg)
 
 //----------------------------------------------
 
+static int position_to_index(struct widget_ctx *ctx, const GUI_RECT *win_rect, int y)
+{
+    if (ctx->item_height != 0)
+        return (y - (win_rect->y0 + ctx->offset)) / ctx->item_height;
+    else
+        return -1;
+}
+
+//----------------------------------------------
+
+static void draw_item(struct list_item *item, struct widget_ctx *ctx, int x, int y, int w, bool selected)
+{
+    if (item->icon)
+    {
+        GUI_SetColor(ctx->icon_color);
+        GUI_DrawBitmap(item->icon, x, y);
+
+        x += item->icon->XSize + 10;
+    }
+
+    GUI_SetColor(ctx->text_color);
+    GUI_DispStringAt(item->text, x, y);
+}
+
+//----------------------------------------------
+
 static void paint_widget(struct widget_ctx *ctx, WM_MESSAGE *msg)
 {
     GUI_RECT rect;
     WM_GetWindowRectEx(msg->hWin, &rect);
+
+    int w = rect.x1 - rect.x0;
+
+    int first_index = position_to_index(ctx, &rect, rect.y0);
+    int last_index = position_to_index(ctx, &rect, rect.y1);
 
     GUI_MoveRect(&rect, -rect.x0, -rect.y0);
 
     GUI_SetColor(ctx->bg_color);
     GUI_FillRectEx(&rect);
 
-    rect.y0 = ctx->offset;
-    rect.y1 = ctx->offset + ctx->font->YSize;
-
     GUI_SetFont(ctx->font);
+
+    int x = 0;
+    int y = ctx->offset;
 
     int i = 0;
     struct list_item *item = ctx->items;
     while (item)
     {
-        if (item->icon)
-        {
-            GUI_DrawBitmap(item->icon, rect.x0, rect.y0);
+        if (i > last_index)
+            break;
 
-            GUI_SetColor((i == ctx->selected_item) ? GUI_GREEN : ctx->color);
+        if (i >= first_index)
+            draw_item(item, ctx, x, y, w, i == ctx->selected_item);
 
-            int text_offset = item->icon->XSize + 10;
-            rect.x0 += text_offset;
-
-            GUI_DispStringInRect(item->text, &rect, GUI_TA_LEFT | GUI_TA_TOP);
-
-            rect.x0 -= text_offset;
-        }
-        else
-        {
-            GUI_DispStringInRect(item->text, &rect, GUI_TA_LEFT | GUI_TA_TOP);
-        }
-
-        GUI_MoveRect(&rect, 0, ctx->font->YSize);
+        y += ctx->item_height;
 
         item = item->next;
         i++;
@@ -341,9 +321,9 @@ PT_THREAD(touch_thread(struct pt *pt, WM_HWIN handle, struct widget_ctx *ctx, co
     PT_WAIT_UNTIL(pt, state->Pressed);
 
     GUI_RECT rect;
-    WM_GetWindowRectEx(handle, &rect);
+    WM_GetClientRectEx(handle, &rect);
 
-    int selected = (state->y - (rect.y0 + ctx->offset)) / ctx->font->YSize;
+    int selected = position_to_index(ctx, &rect, state->y);
     if ((selected < 0) || (selected >= ctx->num_items))
         selected = -1;
 
@@ -382,5 +362,5 @@ static void handle_touch(struct widget_ctx *ctx, WM_MESSAGE *msg)
 {
     const GUI_PID_STATE *state = msg->Data.p;
 
-    touch_thread(&ctx->thread, msg->hWin, ctx, state);
+    touch_thread(&ctx->pt_touch, msg->hWin, ctx, state);
 }

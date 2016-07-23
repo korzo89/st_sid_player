@@ -27,25 +27,21 @@ struct gui_event
 
 struct gui_screen
 {
-    const GUI_WIDGET_CREATE_INFO *resources;
-    size_t resources_len;
     void (*create)(GUI_HWIN wnd);
     void (*destroy)(void);
     void (*handle_event)(const struct gui_event *event);
     void (*process)(void);
 };
 
-#define DEF_SCREEN(_res, _create, _destroy, _event, _proc)  \
-    {                                                       \
-        .resources = (_res),                                \
-        .resources_len = ARRAY_SIZE(_res),                  \
-        .create = (_create),                                \
-        .destroy = (_destroy),                              \
-        .handle_event = (_event),                           \
-        .process = (_proc)                                  \
+#define DEF_SCREEN(_create, _destroy, _event, _proc)    \
+    {                                                   \
+        .create = (_create),                            \
+        .destroy = (_destroy),                          \
+        .handle_event = (_event),                       \
+        .process = (_proc)                              \
     }
 
-#define SIMPLE_SCREEN()         DEF_SCREEN(resources, create, destroy, handle_event, process)
+#define SIMPLE_SCREEN()     DEF_SCREEN(create, destroy, handle_event, process)
 
 #define GUI_ALLOC_CTX(_ptr)                 \
     do {                                    \
@@ -60,6 +56,8 @@ struct gui_screen
     } while(0)
 
 #define WID(_x)             (GUI_ID_USER + (_x))
+
+#define GUI_RGBH(_x)        ((((_x) & 0xFF0000) >> 16) | ((_x) & 0xFF00) | (((_x) & 0xFF) << 16))
 
 //----------------------------------------------
 

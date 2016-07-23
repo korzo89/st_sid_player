@@ -13,16 +13,36 @@
 #include <string.h>
 #include <app/app_context.h>
 #include <gui/widgets/widget_list.h>
+#include <gui/fonts/fonts.h>
 
 //----------------------------------------------
+
+#define WINDOW_PADDING  5
+
+#define ACTION_X        WINDOW_PADDING
+#define ACTION_Y        WINDOW_PADDING
+#define ACTION_WIDTH    40
+#define ACTION_HEIGHT   40
+
+#define HEADER_X        (ACTION_X + ACTION_WIDTH + 10)
+#define HEADER_Y        WINDOW_PADDING
+#define HEADER_WIDTH    (LCD_WIDTH - WINDOW_PADDING - (ACTION_X + ACTION_WIDTH))
+#define HEADER_HEIGHT   40
+
+#define LIST_X          WINDOW_PADDING
+#define LIST_Y          (HEADER_Y + HEADER_HEIGHT)
+#define LIST_WIDTH      HEADER_WIDTH
+#define LIST_HEIGHT     (LCD_HEIGHT - (HEADER_Y + HEADER_HEIGHT) - WINDOW_PADDING)
 
 #define ROOT_DIR    ""
 
 struct wnd_ctx
 {
+    GUI_HWIN header;
     GUI_HWIN list;
 
     char curr_path[_MAX_LFN + 1];
+    char buffer[_MAX_LFN + 1];
 };
 
 static struct wnd_ctx *ctx;
@@ -31,20 +51,31 @@ static void list_curr_dir(void);
 
 //----------------------------------------------
 
-static const GUI_WIDGET_CREATE_INFO resources[] = {
-    { WINDOW_CreateIndirect,  "Window", 0,      0, 0, LCD_WIDTH, LCD_HEIGHT, 0, 0, 0 },
-    { widget_list_create,     "",       WID(0), 0, 0, LCD_WIDTH, LCD_HEIGHT, 0 },
-};
-
-//----------------------------------------------
-
 static void create(GUI_HWIN wnd)
 {
     GUI_ALLOC_CTX(ctx);
 
-    ctx->list = WM_GetDialogItem(wnd, WID(0));
+    WINDOW_SetBkColor(wnd, GUI_BLACK);
 
-    widget_list_set_font(ctx->list, &GUI_Font32_ASCII);
+    ctx->header = TEXT_CreateAsChild(
+            HEADER_X, HEADER_Y,
+            HEADER_WIDTH, HEADER_HEIGHT,
+            wnd, 0, WM_CF_SHOW,
+            "", GUI_TA_LEFT | GUI_TA_TOP);
+
+    ctx->list = widget_list_create(
+            LIST_X, LIST_Y,
+            LIST_WIDTH, LIST_HEIGHT,
+            wnd, WM_CF_SHOW);
+
+    TEXT_SetTextColor(ctx->header, GUI_WHITE);
+    TEXT_SetFont(ctx->header, &GUI_FontSegoe_UI_Semibold35);
+
+    const GUI_FONT *font = &GUI_FontSegoe_UI_Semibold30;
+
+    widget_list_set_font(ctx->list, font);
+    widget_list_set_item_height(ctx->list, font->YSize);
+    widget_list_set_icon_color(ctx->list, GUI_RGBH(0x3B98C1));
 
     strcpy(ctx->curr_path, ROOT_DIR);
 
@@ -62,14 +93,21 @@ static void destroy(void)
 
 static void list_curr_dir(void)
 {
-    extern GUI_CONST_STORAGE GUI_BITMAP bmFolder26;
-    extern GUI_CONST_STORAGE GUI_BITMAP bmMusic26;
+    strcpy(ctx->buffer, "0:");
+    if (ctx->curr_path[0] != '/')
+        strcat(ctx->buffer, "/");
+    strcat(ctx->buffer, ctx->curr_path);
+
+    TEXT_SetText(ctx->header, ctx->buffer);
+
+    extern GUI_CONST_STORAGE GUI_BITMAP bmfolder;
+    extern GUI_CONST_STORAGE GUI_BITMAP bmmusic;
 
     widget_list_clear(ctx->list);
     widget_list_set_scroll(ctx->list, 0);
 
     if (strcmp(ctx->curr_path, ROOT_DIR) != 0)
-        widget_list_add_item(ctx->list, "..", &bmFolder26);
+        widget_list_add_item(ctx->list, "..", &bmfolder);
 
     DIR dir;
     FRESULT res = f_opendir(&dir, ctx->curr_path);
@@ -101,7 +139,7 @@ static void list_curr_dir(void)
         }
 
         widget_list_add_item(ctx->list, info.fname,
-                info.fattrib & AM_DIR ? &bmFolder26 : &bmMusic26);
+                info.fattrib & AM_DIR ? &bmfolder : &bmmusic);
     }
 
     f_closedir(&dir);

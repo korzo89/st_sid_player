@@ -38,6 +38,24 @@ void gui_init(void)
     touch_init();
     GUI_Init();
     WM_MULTIBUF_Enable(1);
+
+    WM_SelectWindow(WM_HBKWIN);
+    WM_SetDesktopColor(GUI_BLACK);
+
+#if 0
+    __disable_irq();
+
+    GUI_MEMDEV_Handle memdev = GUI_MEMDEV_Create(0, 0, 100, 100);
+    GUI_MEMDEV_Select(memdev);
+    GUI_SetBkColor(GUI_BLUE);
+    GUI_Clear();
+    GUI_SetColor(GUI_GREEN);
+    GUI_FillCircle(50, 50, 40);
+    GUI_MEMDEV_CopyToLCD(memdev);
+    asm volatile("nop");
+
+    __enable_irq();
+#endif
 }
 
 //----------------------------------------------
@@ -47,7 +65,7 @@ static void destroy_curr_screen(void)
     if (ctx.curr_screen->destroy)
         ctx.curr_screen->destroy();
 
-    GUI_EndDialog(ctx.curr_wnd, 0);
+    WM_DeleteWindow(ctx.curr_wnd);
 }
 
 //----------------------------------------------
@@ -61,11 +79,10 @@ static void show_next_screen(void)
     if (!screen)
         return;
 
-    ASSERT_WARN(screen->resources != NULL);
-
-    ctx.curr_wnd = GUI_CreateDialogBox(
-            screen->resources, screen->resources_len,
-            WM_DefaultProc, WM_HBKWIN, 0, 0);
+    ctx.curr_wnd = WINDOW_CreateEx(
+            0, 0, LCD_WIDTH, LCD_HEIGHT,
+            WM_GetBackgroundWindow(), WM_CF_SHOW,
+            0, 0, NULL);
 
     if (screen->create)
         screen->create(ctx.curr_wnd);

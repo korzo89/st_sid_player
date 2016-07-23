@@ -441,7 +441,11 @@ void LCD_X_Config(void)
 
     /* Set up drawing routine for 32bpp bitmap using DMA2D */
     if (LCD_LL_GetPixelformat(i) == LTDC_PIXEL_FORMAT_ARGB8888) {
+#if 0
      LCD_SetDevFunc(i, LCD_DEVFUNC_DRAWBMP_32BPP, (void(*)(void))CUSTOM_DrawBitmap32bpp);     /* Set up drawing routine for 32bpp bitmap using DMA2D. Makes only sense with ARGB8888 */
+#else
+     (void)CUSTOM_DrawBitmap32bpp;
+#endif
     }    
   }
 }

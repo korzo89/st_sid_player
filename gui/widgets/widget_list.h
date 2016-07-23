@@ -22,7 +22,7 @@ enum widget_list_event
 
 //----------------------------------------------
 
-WM_HWIN widget_list_create(const GUI_WIDGET_CREATE_INFO *info, WM_HWIN parent, int x, int y, WM_CALLBACK *cb);
+WM_HWIN widget_list_create(int x, int y, int w, int h, WM_HWIN parent, int flags);
 
 bool widget_list_add_item(WM_HWIN handle, const char *text, const GUI_BITMAP *icon);
 
@@ -34,7 +34,11 @@ void widget_list_set_font(WM_HWIN handle, const GUI_FONT *font);
 
 void widget_list_set_bg_color(WM_HWIN handle, GUI_COLOR color);
 
-void widget_list_set_color(WM_HWIN handle, GUI_COLOR color);
+void widget_list_set_text_color(WM_HWIN handle, GUI_COLOR color);
+
+void widget_list_set_icon_color(WM_HWIN handle, GUI_COLOR color);
+
+void widget_list_set_item_height(WM_HWIN handle, int val);
 
 void widget_list_set_scroll(WM_HWIN handle, int val);
 

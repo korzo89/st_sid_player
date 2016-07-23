@@ -11,6 +11,11 @@ set(CMAKE_C_COMPILER arm-none-eabi-gcc)
 set(CMAKE_AR arm-none-eabi-ar)
 set(SIZE arm-none-eabi-size)
 
+SET(CMAKE_C_USE_RESPONSE_FILE_FOR_OBJECTS 1)
+SET(CMAKE_CXX_USE_RESPONSE_FILE_FOR_OBJECTS 1)
+SET(CMAKE_C_USE_RESPONSE_FILE_FOR_INCLUDES 1)
+SET(CMAKE_CXX_USE_RESPONSE_FILE_FOR_INCLUDES 1)
+
 set(COMMON_FLAGS "-mthumb -mcpu=cortex-m7 -mfloat-abi=hard -mfpu=fpv5-sp-d16")
 set(CMAKE_C_FLAGS "${COMMON_FLAGS} -ggdb -O0 -Wall -Werror -fmessage-length=0 -ffunction-sections -specs=nosys.specs -specs=nano.specs" CACHE STRING "C compiler flags")
 set(CMAKE_ASM_FLAGS "${COMMON_FLAGS}" CACHE STRING "assembler flags")
@@ -55,6 +60,7 @@ aux_source_directory(gui SRC)
 aux_source_directory(gui/screens SRC)
 aux_source_directory(gui/widgets SRC)
 aux_source_directory(gui/icons SRC)
+aux_source_directory(gui/fonts SRC)
 aux_source_directory(gui/STemWin/OS SRC)
 
 set(SRC ${SRC} system/startup_stm32f746xx.s)
@@ -65,6 +71,7 @@ link_directories(gui/STemWin/Lib)
 add_executable(${TARGET_NAME} ${SRC})
 
 target_link_libraries(${TARGET_NAME} STemWin528_CM7_GCC)
+target_link_libraries(${TARGET_NAME} m c)
 
 set_target_properties(${TARGET_NAME} PROPERTIES LINK_FLAGS "-T linker.ld -Wl,-Map=${TARGET_NAME}.map -Wl,--gc-sections")
 
