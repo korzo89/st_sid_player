@@ -14,6 +14,7 @@
 #include <app/app_context.h>
 #include <gui/widgets/widget_list.h>
 #include <gui/fonts/fonts.h>
+#include <icons/icons.h>
 
 //----------------------------------------------
 
@@ -100,14 +101,11 @@ static void list_curr_dir(void)
 
     TEXT_SetText(ctx->header, ctx->buffer);
 
-    extern GUI_CONST_STORAGE GUI_BITMAP bmfolder;
-    extern GUI_CONST_STORAGE GUI_BITMAP bmmusic;
-
     widget_list_clear(ctx->list);
     widget_list_set_scroll(ctx->list, 0);
 
     if (strcmp(ctx->curr_path, ROOT_DIR) != 0)
-        widget_list_add_item(ctx->list, "..", &bmfolder);
+        widget_list_add_item(ctx->list, "..", &icon_folder);
 
     DIR dir;
     FRESULT res = f_opendir(&dir, ctx->curr_path);
@@ -139,7 +137,7 @@ static void list_curr_dir(void)
         }
 
         widget_list_add_item(ctx->list, info.fname,
-                info.fattrib & AM_DIR ? &bmfolder : &bmmusic);
+                info.fattrib & AM_DIR ? &icon_folder : &icon_music);
     }
 
     f_closedir(&dir);

@@ -28,11 +28,12 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/st_sid_player/drivers/BSP/STM32746G-Discovery}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/st_sid_player/config}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/st_sid_player/drivers/HAL/Inc}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;C:\gcc-arm-5.4-2016q1\arm-none-eabi\include&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;C:\gcc-arm-5.4-2016q1\lib\gcc\arm-none-eabi\5.4.1\include&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;C:\gcc-arm-5.4-2016q2\arm-none-eabi\include&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;C:\gcc-arm-5.4-2016q2\lib\gcc\arm-none-eabi\5.4.1\include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/st_sid_player/drivers/CMSIS/Include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/st_sid_player/drivers/FatFs/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/st_sid_player/gui/STemWin/inc}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/st_sid_player/build}&quot;"/>
 								</option>
 								<option id="org.eclipse.cdt.build.core.settings.holder.symbols.1510578537" name="Symbols" superClass="org.eclipse.cdt.build.core.settings.holder.symbols" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="USE_HAL_DRIVER"/>
@@ -47,11 +48,12 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/st_sid_player/drivers/BSP/STM32746G-Discovery}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/st_sid_player/config}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/st_sid_player/drivers/HAL/Inc}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;C:\gcc-arm-5.4-2016q1\arm-none-eabi\include&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;C:\gcc-arm-5.4-2016q1\lib\gcc\arm-none-eabi\5.4.1\include&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;C:\gcc-arm-5.4-2016q2\arm-none-eabi\include&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;C:\gcc-arm-5.4-2016q2\lib\gcc\arm-none-eabi\5.4.1\include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/st_sid_player/drivers/CMSIS/Include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/st_sid_player/drivers/FatFs/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/st_sid_player/gui/STemWin/inc}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/st_sid_player/build}&quot;"/>
 								</option>
 								<option id="org.eclipse.cdt.build.core.settings.holder.symbols.1764911345" name="Symbols" superClass="org.eclipse.cdt.build.core.settings.holder.symbols" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="USE_HAL_DRIVER"/>
@@ -66,11 +68,12 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/st_sid_player/drivers/BSP/STM32746G-Discovery}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/st_sid_player/config}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/st_sid_player/drivers/HAL/Inc}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;C:\gcc-arm-5.4-2016q1\arm-none-eabi\include&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;C:\gcc-arm-5.4-2016q1\lib\gcc\arm-none-eabi\5.4.1\include&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;C:\gcc-arm-5.4-2016q2\arm-none-eabi\include&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;C:\gcc-arm-5.4-2016q2\lib\gcc\arm-none-eabi\5.4.1\include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/st_sid_player/drivers/CMSIS/Include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/st_sid_player/drivers/FatFs/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/st_sid_player/gui/STemWin/inc}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/st_sid_player/build}&quot;"/>
 								</option>
 								<option id="org.eclipse.cdt.build.core.settings.holder.symbols.1660132654" name="Symbols" superClass="org.eclipse.cdt.build.core.settings.holder.symbols" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="USE_HAL_DRIVER"/>

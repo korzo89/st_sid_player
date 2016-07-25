@@ -24,6 +24,8 @@ set(CMAKE_ASM_COMPILE_OBJECT "<CMAKE_ASM_COMPILER> ${CMAKE_ASM_FLAGS} <SOURCE> -
 
 project(st_sid_player C ASM)
 
+include(gui/icons/icons.cmake)
+
 add_definitions(-DSTM32F746xx)
 add_definitions(-DUSE_HAL_DRIVER)
 add_definitions(-DUSE_STM32746G_DISCO)
@@ -41,6 +43,7 @@ include_directories(utils)
 include_directories(gui)
 include_directories(gui/STemWin/inc)
 include_directories(gui/STemWin/OS)
+include_directories(${CMAKE_BINARY_DIR})
 
 aux_source_directory(. SRC)
 aux_source_directory(config SRC)
