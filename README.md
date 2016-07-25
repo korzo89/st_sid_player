@@ -15,12 +15,18 @@ GUI engine is based on the SEGGER STemWin library and it is included as a GCC *.
 # Board support
 Currently, only the STM32F746G-DISCO evaluation board is supported. However, since the code relies heavily on the STM32Cube drivers and BSP, porting to other boards (with the appropriate hardware) should not be a problem.
 
+# Prerequisites
+* a GNU-compatible ARM toolchain (`arm-none-eabi-*`),
+* Python 2.7 or newer,
+* CMake 3.3 or newer,
+* make.
+
+Before building, make sure that all of the tools mentioned above are accessible globally in your system (i.e. through the PATH variable).
+
 # Building
-Before building, make sure that your `arm-none-eabi-*` executables are accessible globally in your system.
 ```
-mkdir build
+python create_proj.py
 cd build
-cmake .. -G "Unix Makefiles"
 make all
 ```
 
