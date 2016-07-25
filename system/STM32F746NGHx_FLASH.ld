@@ -41,8 +41,9 @@ _Min_Stack_Size = 0x400; /* required amount of stack */
 /* Specify the memory areas */
 MEMORY
 {
-FLASH (rx)      : ORIGIN = 0x08000000, LENGTH = 1024K
-RAM (xrw)      : ORIGIN = 0x20000000, LENGTH = 320K
+FLASH (rx)	: ORIGIN = 0x08000000, LENGTH = 1024K
+RAM (xrw)   : ORIGIN = 0x20000000, LENGTH = 320K
+SRAM (rw)   : ORIGIN = 0xC0000000, LENGTH = 8192K
 }
 
 /* Define output sections */
@@ -152,8 +153,13 @@ SECTIONS
     . = . + _Min_Stack_Size;
     . = ALIGN(8);
   } >RAM
-
   
+  .sram (NOLOAD) :
+  {
+    . = ALIGN(4);
+    *(.sram_section)
+    . = ALIGN(4);
+  } >SRAM
 
   /* Remove information from the standard libraries */
   /DISCARD/ :

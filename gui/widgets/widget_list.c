@@ -47,35 +47,18 @@ struct widget_ctx
     struct pt pt_touch;
 };
 
-static struct widget_ctx* get_context(WM_HWIN handle);
-static void default_callback(WM_MESSAGE *msg);
+static void callback(WM_MESSAGE *msg);
 static void paint_widget(struct widget_ctx *ctx, WM_MESSAGE *msg);
 static void handle_touch(struct widget_ctx *ctx, WM_MESSAGE *msg);
 static void destroy_list_items(struct widget_ctx *ctx);
-
-#define VISUAL_PROPERTY_SETTER(_name, _type, _prop)     \
-    void _name(WM_HWIN handle, _type val)               \
-    {                                                   \
-        if (!handle) return;                            \
-        struct widget_ctx *ctx = get_context(handle);   \
-        if (ctx->_prop == val) return;                  \
-        ctx->_prop = val;                               \
-        WM_InvalidateWindow(handle);                    \
-    }
 
 //----------------------------------------------
 
 WM_HWIN widget_list_create(int x, int y, int w, int h, WM_HWIN parent, int flags)
 {
-    WM_HWIN handle = WM_CreateWindowAsChild(
-            x, y, w, h,
-            parent, flags,
-            default_callback,
-            sizeof(void*));
+    WM_HWIN handle = widget_create(x, y, w, h, parent, flags, callback);
 
-    struct widget_ctx *ctx = malloc(sizeof(*ctx));
-    ASSERT_CRIT(ctx != NULL);
-    memset(ctx, 0, sizeof(*ctx));
+    struct widget_ctx *ctx = WIDGET_CREATE_CONTEXT(handle);
 
     ctx->font = DEFAULT_FONT;
     ctx->text_color = DEFAULT_COLOR;
@@ -84,8 +67,6 @@ WM_HWIN widget_list_create(int x, int y, int w, int h, WM_HWIN parent, int flags
     ctx->selected_item = -1;
 
     PT_INIT(&ctx->pt_touch);
-
-    WM_SetUserData(handle, &ctx, sizeof(void*));
 
     return handle;
 }
@@ -97,7 +78,7 @@ bool widget_list_add_item(WM_HWIN handle, const char *text, const GUI_BITMAP *ic
     if (!handle || !text)
         return false;
 
-    struct widget_ctx *ctx = get_context(handle);
+    struct widget_ctx *ctx = widget_get_context(handle);
 
     struct list_item *last_item = ctx->items;
     while (last_item && last_item->next)
@@ -136,7 +117,7 @@ const char* widget_list_get_item(WM_HWIN handle, int index)
     if (!handle || (index < 0))
         return NULL;
 
-    struct widget_ctx *ctx = get_context(handle);
+    struct widget_ctx *ctx = widget_get_context(handle);
 
     if (index >= ctx->num_items)
         return NULL;
@@ -155,33 +136,24 @@ void widget_list_clear(WM_HWIN handle)
     if (!handle)
         return;
 
-    destroy_list_items(get_context(handle));
+    destroy_list_items(widget_get_context(handle));
 
     WM_InvalidateWindow(handle);
 }
 
 //----------------------------------------------
 
-VISUAL_PROPERTY_SETTER(widget_list_set_font, const GUI_FONT*, font);
+WIDGET_VISUAL_PROPERTY_SETTER(widget_list_set_font, const GUI_FONT*, font);
 
-VISUAL_PROPERTY_SETTER(widget_list_set_bg_color, GUI_COLOR, bg_color);
+WIDGET_VISUAL_PROPERTY_SETTER(widget_list_set_bg_color, GUI_COLOR, bg_color);
 
-VISUAL_PROPERTY_SETTER(widget_list_set_text_color, GUI_COLOR, text_color);
+WIDGET_VISUAL_PROPERTY_SETTER(widget_list_set_text_color, GUI_COLOR, text_color);
 
-VISUAL_PROPERTY_SETTER(widget_list_set_icon_color, GUI_COLOR, icon_color);
+WIDGET_VISUAL_PROPERTY_SETTER(widget_list_set_icon_color, GUI_COLOR, icon_color);
 
-VISUAL_PROPERTY_SETTER(widget_list_set_scroll, int, offset);
+WIDGET_VISUAL_PROPERTY_SETTER(widget_list_set_scroll, int, offset);
 
-VISUAL_PROPERTY_SETTER(widget_list_set_item_height, int, item_height);
-
-//----------------------------------------------
-
-static struct widget_ctx* get_context(WM_HWIN handle)
-{
-    void *ctx;
-    WM_GetUserData(handle, &ctx, sizeof(void*));
-    return ctx;
-}
+WIDGET_VISUAL_PROPERTY_SETTER(widget_list_set_item_height, int, item_height);
 
 //----------------------------------------------
 
@@ -204,17 +176,17 @@ static void destroy_list_items(struct widget_ctx *ctx)
 
 //----------------------------------------------
 
-static void destroy_widget(struct widget_ctx *ctx, WM_MESSAGE *msg)
+static void destroy_widget(WM_HWIN handle, struct widget_ctx *ctx)
 {
     destroy_list_items(ctx);
-    free(ctx);
+    widget_destroy_context(handle);
 }
 
 //----------------------------------------------
 
-static void default_callback(WM_MESSAGE *msg)
+static void callback(WM_MESSAGE *msg)
 {
-    struct widget_ctx *ctx = get_context(msg->hWin);
+    struct widget_ctx *ctx = widget_get_context(msg->hWin);
 
     switch (msg->MsgId)
     {
@@ -223,7 +195,7 @@ static void default_callback(WM_MESSAGE *msg)
         break;
 
     case WM_DELETE:
-        destroy_widget(ctx, msg);
+        destroy_widget(msg->hWin, ctx);
         break;
 
     case WM_PAINT:

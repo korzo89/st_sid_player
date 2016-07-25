@@ -51,6 +51,7 @@ Purpose     : Display controller initialization
   ******************************************************************************
   */
 
+#include <config.h>
 #include "GUI.h"
 
 /*********************************************************************
@@ -62,9 +63,9 @@ Purpose     : Display controller initialization
 //
 // Define the available number of bytes available for the GUI
 //
-#define GUI_NUMBYTES  (1024) *  150
+#define GUI_NUMBYTES  (3 * 1024 * 1024)
 
-U32 aMemory[GUI_NUMBYTES / 4];
+static U32 gui_memory[GUI_NUMBYTES / 4] ATTRIBUTE_SECTION_SRAM;
 
 /*********************************************************************
 *
@@ -85,7 +86,7 @@ void GUI_X_Config(void)
   //
   // Assign memory to STemWin
   //
-  GUI_ALLOC_AssignMemory(aMemory, GUI_NUMBYTES);
+  GUI_ALLOC_AssignMemory(gui_memory, GUI_NUMBYTES);
 }
 
 /*************************** End of file ****************************/

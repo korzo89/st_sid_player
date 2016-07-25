@@ -46,6 +46,7 @@
   */ 
 
 /* Includes ------------------------------------------------------------------*/
+#include <config.h>
 #include "LCDConf.h"
 #include "GUI_Private.h"
 #include <system/stm32f7xx_hal_conf.h>
@@ -117,9 +118,11 @@
   #error Virtual screens and multiple buffers are not allowed!
 #endif
 
+#define FRAME_BUFFER_SIZE (XSIZE_PHYS * YSIZE_PHYS)
+
 /* From SDRAM */
-#define LCD_LAYER0_FRAME_BUFFER  ((int)0xC0200000)
-#define LCD_LAYER1_FRAME_BUFFER  ((int)0xC0400000)
+static uint32_t lcd_main_frame_buffer[FRAME_BUFFER_SIZE] ATTRIBUTE_SECTION_SRAM;
+static uint32_t lcd_layer_frame_buffers[GUI_NUM_LAYERS][FRAME_BUFFER_SIZE][NUM_BUFFERS] ATTRIBUTE_SECTION_SRAM;
 
 /**
 * @}
@@ -414,10 +417,10 @@ void LCD_X_Config(void)
   
     
     /*Initialize GUI Layer structure */
-    layer_prop[0].address = LCD_LAYER0_FRAME_BUFFER;
+    layer_prop[0].address = (int32_t)lcd_layer_frame_buffers[0];
     
 #if (GUI_NUM_LAYERS > 1)
-    layer_prop[1].address = LCD_LAYER1_FRAME_BUFFER; 
+    layer_prop[1].address = (int32_t)lcd_layer_frame_buffers[1];
 #endif
        
    /* Setting up VRam address and custom functions for CopyBuffer-, CopyRect- and FillRect operations */
@@ -568,7 +571,7 @@ static void LCD_LL_LayerInit(U32 LayerIndex)
     layer_cfg.WindowY0 = 0;
     layer_cfg.WindowY1 = YSIZE_PHYS; 
     layer_cfg.PixelFormat = LCD_LL_GetPixelformat(LayerIndex);
-    layer_cfg.FBStartAdress = ((uint32_t)0xC0000000);
+    layer_cfg.FBStartAdress = ((uint32_t)lcd_main_frame_buffer);
     layer_cfg.Alpha = 255;
     layer_cfg.Alpha0 = 0;
     layer_cfg.Backcolor.Blue = 0;

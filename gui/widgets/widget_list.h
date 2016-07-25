@@ -8,10 +8,7 @@
 #ifndef GUI_WIDGETS_WIDGET_LIST_H_
 #define GUI_WIDGETS_WIDGET_LIST_H_
 
-#include <WM.h>
-#include <DIALOG.h>
-#include <stdbool.h>
-#include <stdint.h>
+#include <gui/widget.h>
 
 //----------------------------------------------
 
