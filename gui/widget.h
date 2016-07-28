@@ -12,8 +12,15 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
+#include <gui/gui.h>
 
 //----------------------------------------------
+
+enum widget_event
+{
+    WIDGET_EVENT_PRESSED,
+    WIDGET_EVENT_CUSTOM
+};
 
 #define WIDGET_VISUAL_PROPERTY_SETTER(_name, _type, _prop)      \
     void _name(WM_HWIN handle, _type val)                       \
@@ -23,6 +30,17 @@
         if (ctx->_prop == val) return;                          \
         ctx->_prop = val;                                       \
         WM_InvalidateWindow(handle);                            \
+    }
+
+#define WIDGET_VISUAL_PROPERTY_SETTER2(_name, _t1, _p1, _t2, _p2)   \
+    void _name(WM_HWIN handle, _t1 v1, _t2 v2)                      \
+    {                                                               \
+        if (!handle) return;                                        \
+        struct widget_ctx *ctx = widget_get_context(handle);        \
+        if ((ctx->_p1 == v1) && (ctx->_p2 == v2)) return;           \
+        ctx->_p1 = v1;                                              \
+        ctx->_p2 = v2;                                              \
+        WM_InvalidateWindow(handle);                                \
     }
 
 #define WIDGET_CREATE_CONTEXT(_handle)  \

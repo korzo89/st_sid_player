@@ -11,7 +11,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <protothreads/pt.h>
-#include <gui/gui.h>
 #include <utils/tween.h>
 
 //----------------------------------------------

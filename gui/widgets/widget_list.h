@@ -14,7 +14,7 @@
 
 enum widget_list_event
 {
-    WIDGET_LIST_EVENT_SELECTED,
+    WIDGET_LIST_EVENT_SELECTED = WIDGET_EVENT_CUSTOM,
 };
 
 //----------------------------------------------
