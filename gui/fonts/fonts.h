@@ -12,6 +12,7 @@
 
 //----------------------------------------------
 
+extern GUI_CONST_STORAGE GUI_FONT GUI_FontSegoe_UI_Semibold15;
 extern GUI_CONST_STORAGE GUI_FONT GUI_FontSegoe_UI_Semibold30;
 extern GUI_CONST_STORAGE GUI_FONT GUI_FontSegoe_UI_Semibold35;
 
