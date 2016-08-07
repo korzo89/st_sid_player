@@ -17,6 +17,8 @@ void sid_player_init(void);
 
 bool sid_player_play(const char *path);
 
+void sid_player_stop(void);
+
 void sid_player_process(void);
 
 const struct sid_info* sid_player_get_info(void);

@@ -13,8 +13,12 @@
 
 //----------------------------------------------
 
+#define APP_ROOT_DIR    "0:"
+
 struct app_ctx
 {
+    int list_scroll;
+    char curr_path[_MAX_LFN + 1];
     char path_buffer[_MAX_LFN + 1];
 };
 

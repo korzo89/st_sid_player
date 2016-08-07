@@ -9,7 +9,9 @@
 
 //----------------------------------------------
 
-static struct app_ctx ctx;
+static struct app_ctx ctx = {
+    .curr_path = APP_ROOT_DIR
+};
 
 //----------------------------------------------
 

@@ -110,6 +110,13 @@ bool sid_player_play(const char *path)
 
 //----------------------------------------------
 
+void sid_player_stop(void)
+{
+    BSP_AUDIO_OUT_Stop(CODEC_PDWN_SW);
+}
+
+//----------------------------------------------
+
 static void generate_samples(size_t offset, size_t length)
 {
     DBG_PRINTF("generate_samples, offset %u length %u\n", offset, length);

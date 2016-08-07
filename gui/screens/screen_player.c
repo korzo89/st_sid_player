@@ -13,15 +13,25 @@
 #include <sid/sid_player.h>
 #include <app/app_context.h>
 #include <gui/fonts/fonts.h>
+#include <gui/widgets/widget_icon.h>
+#include <icons/icons.h>
 
 //----------------------------------------------
 
-#define TITLE_FONT  (&GUI_FontSegoe_UI_Semibold35)
-#define TEXT_FONT   (&GUI_FontSegoe_UI_Semibold30)
-#define SMALL_FONT  (&GUI_FontSegoe_UI_Semibold15)
+#define WINDOW_PADDING  5
+
+#define ACTION_X        WINDOW_PADDING
+#define ACTION_Y        WINDOW_PADDING
+#define ACTION_WIDTH    45
+#define ACTION_HEIGHT   ACTION_WIDTH
+
+#define TITLE_FONT      (&GUI_FontSegoe_UI_Semibold35)
+#define TEXT_FONT       (&GUI_FontSegoe_UI_Semibold30)
+#define SMALL_FONT      (&GUI_FontSegoe_UI_Semibold15)
 
 struct wnd_ctx
 {
+    GUI_HWIN action;
 };
 
 static struct wnd_ctx *ctx;
@@ -33,6 +43,13 @@ static void create(GUI_HWIN wnd)
     GUI_ALLOC_CTX(ctx);
 
     WINDOW_SetBkColor(wnd, GUI_BLACK);
+
+    ctx->action = widget_icon_create(
+                ACTION_X, ACTION_Y,
+                ACTION_WIDTH, ACTION_HEIGHT,
+                wnd, WM_CF_SHOW);
+
+    widget_icon_set_icon(ctx->action, &icon_back);
 
     const char *path = app_ctx_get()->path_buffer;
 
@@ -83,6 +100,8 @@ static void create(GUI_HWIN wnd)
 
 static void destroy(void)
 {
+    sid_player_stop();
+
     GUI_FREE_CTX(ctx);
 }
 
@@ -90,6 +109,16 @@ static void destroy(void)
 
 static void handle_event(const struct gui_event *event)
 {
+    switch (event->id)
+    {
+    case WIDGET_EVENT_PRESSED:
+        if (event->sender == ctx->action)
+            gui_show_screen(&screen_file_list);
+        break;
+
+    default:
+        break;
+    }
 }
 
 //----------------------------------------------

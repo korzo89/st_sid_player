@@ -43,6 +43,16 @@ enum widget_event
         WM_InvalidateWindow(handle);                                \
     }
 
+#define WIDGET_PROPERTY_GETTER(_name, _type, _prop)      \
+    void _name(WM_HWIN handle, _type val)                       \
+    {                                                           \
+        if (!handle) return;                                    \
+        struct widget_ctx *ctx = widget_get_context(handle);    \
+        if (ctx->_prop == val) return;                          \
+        ctx->_prop = val;                                       \
+        WM_InvalidateWindow(handle);                            \
+    }
+
 #define WIDGET_CREATE_CONTEXT(_handle)  \
         widget_create_context((_handle), sizeof(struct widget_ctx))
 

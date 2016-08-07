@@ -36,16 +36,13 @@
 #define LIST_WIDTH      HEADER_WIDTH
 #define LIST_HEIGHT     (LCD_HEIGHT - LIST_Y - WINDOW_PADDING)
 
-#define ROOT_DIR    ""
-
 struct wnd_ctx
 {
+    struct app_ctx *app;
+
     GUI_HWIN action;
     GUI_HWIN header;
     GUI_HWIN list;
-
-    char curr_path[_MAX_LFN + 1];
-    char buffer[_MAX_LFN + 1];
 
     bool is_at_root;
 };
@@ -59,6 +56,8 @@ static void list_curr_dir(void);
 static void create(GUI_HWIN wnd)
 {
     GUI_ALLOC_CTX(ctx);
+
+    ctx->app = app_ctx_get();
 
     WINDOW_SetBkColor(wnd, GUI_BLACK);
 
@@ -88,8 +87,6 @@ static void create(GUI_HWIN wnd)
     widget_list_set_item_height(ctx->list, font->YSize);
     widget_list_set_icon_color(ctx->list, GUI_RGBH(0x3B98C1));
 
-    strcpy(ctx->curr_path, ROOT_DIR);
-
     ctx->is_at_root = true;
     list_curr_dir();
 }
@@ -105,28 +102,38 @@ static void destroy(void)
 
 static void list_curr_dir(void)
 {
-    strcpy(ctx->buffer, "0:");
-    if (ctx->curr_path[0] != '/')
-        strcat(ctx->buffer, "/");
-    strcat(ctx->buffer, ctx->curr_path);
-
-    TEXT_SetText(ctx->header, ctx->buffer);
+    int len = strlen(ctx->app->curr_path);
+    if (ctx->app->curr_path[len - 1] == ':')
+    {
+        ctx->app->curr_path[len] = '/';
+        ctx->app->curr_path[len + 1] = '\0';
+        TEXT_SetText(ctx->header, ctx->app->curr_path);
+        ctx->app->curr_path[len] = '\0';
+    }
+    else
+    {
+        TEXT_SetText(ctx->header, ctx->app->curr_path);
+    }
 
     widget_list_clear(ctx->list);
     widget_list_set_scroll(ctx->list, 0);
 
-    ctx->is_at_root = (strcmp(ctx->curr_path, ROOT_DIR) == 0);
-    if (ctx->is_at_root)
+    if (strcmp(ctx->app->curr_path, APP_ROOT_DIR) == 0)
+    {
+        ctx->is_at_root = true;
         widget_icon_set_icon(ctx->action, &icon_card);
+    }
     else
+    {
+        ctx->is_at_root = false;
         widget_icon_set_icon(ctx->action, &icon_folder_up);
+    }
 
     DIR dir;
-    FRESULT res = f_opendir(&dir, ctx->curr_path);
+    FRESULT res = f_opendir(&dir, ctx->app->curr_path);
     ASSERT_WARN(res == FR_OK);
 
-    strcat(ctx->curr_path, "/");
-    DBG_PRINTF("curr_path: %s\n", ctx->curr_path);
+    DBG_PRINTF("curr_path: %s\n", ctx->app->curr_path);
 
     while (1)
     {
@@ -159,13 +166,13 @@ static void list_curr_dir(void)
 
 //----------------------------------------------
 
-static void move_to_parent_dir(void)
+static void calculate_parent_dir(void)
 {
     if (ctx->is_at_root)
         return;
 
-    int len = strlen(ctx->curr_path);
-    char *c = ctx->curr_path + (len - 2);
+    int len = strlen(ctx->app->curr_path);
+    char *c = ctx->app->curr_path + (len - 2);
     do
     {
         if (*c == '/')
@@ -174,7 +181,14 @@ static void move_to_parent_dir(void)
             break;
         }
     }
-    while (c-- != ctx->curr_path);
+    while (c-- != ctx->app->curr_path);
+}
+
+//----------------------------------------------
+
+static void move_to_parent_dir(void)
+{
+    calculate_parent_dir();
 
     list_curr_dir();
 }
@@ -187,10 +201,11 @@ static void list_item_selected(int selected)
 
     DBG_PRINTF("selected: %s\n", item);
 
-    strcat(ctx->curr_path, item);
+    strcat(ctx->app->curr_path, "/");
+    strcat(ctx->app->curr_path, item);
 
     FILINFO info;
-    FRESULT res = f_stat(ctx->curr_path, &info);
+    FRESULT res = f_stat(ctx->app->curr_path, &info);
     ASSERT_WARN(res == FR_OK);
 
     if (info.fattrib & AM_DIR)
@@ -199,7 +214,8 @@ static void list_item_selected(int selected)
         return;
     }
 
-    strcpy(app_ctx_get()->path_buffer, ctx->curr_path);
+    strcpy(ctx->app->path_buffer, ctx->app->curr_path);
+    calculate_parent_dir();
 
     gui_show_screen(&screen_player);
 }

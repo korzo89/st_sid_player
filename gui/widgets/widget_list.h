@@ -39,6 +39,8 @@ void widget_list_set_item_height(WM_HWIN handle, int val);
 
 void widget_list_set_scroll(WM_HWIN handle, int val);
 
+int widget_list_get_scroll(WM_HWIN handle);
+
 //----------------------------------------------
 
 #endif /* GUI_WIDGETS_WIDGET_LIST_H_ */
