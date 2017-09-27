@@ -35,10 +35,12 @@ struct wnd_ctx
 {
     GUI_HWIN action;
     GUI_HWIN wnd;
+
     uint32_t wf_top;
     uint32_t wf_bottom;
     uint32_t wf_height;
     uint32_t wf_middle;
+    GUI_MEMDEV_Handle wf_memdev;
 };
 
 static struct wnd_ctx *ctx;
@@ -109,6 +111,8 @@ static void create(GUI_HWIN wnd)
     ctx->wf_bottom = y - 10;
     ctx->wf_height = ctx->wf_bottom - ctx->wf_top;
     ctx->wf_middle = ctx->wf_top + ctx->wf_height / 2;
+
+    ctx->wf_memdev = GUI_MEMDEV_Create(0, ctx->wf_top, LCD_WIDTH, ctx->wf_height);
 }
 
 //----------------------------------------------
@@ -116,6 +120,8 @@ static void create(GUI_HWIN wnd)
 static void destroy(void)
 {
     sid_player_stop();
+
+    GUI_MEMDEV_Delete(ctx->wf_memdev);
 
     GUI_FREE_CTX(ctx);
 }
@@ -148,9 +154,10 @@ static int get_waveform_y(const struct audio_sample *sample)
 
 static void draw_waveform(void)
 {
-    WM_SelectWindow(ctx->wnd);
-    GUI_SetColor(GUI_BLACK);
-    GUI_FillRect(0, ctx->wf_top, LCD_WIDTH, ctx->wf_bottom);
+    GUI_MEMDEV_Select(ctx->wf_memdev);
+
+    GUI_SetBkColor(GUI_BLACK);
+    GUI_Clear();
 
     GUI_SetColor(GUI_WHITE);
 
@@ -174,6 +181,9 @@ static void draw_waveform(void)
         x += bin_width;
         offset += bin_skip;
     }
+
+    WM_SelectWindow(ctx->wnd);
+    GUI_MEMDEV_CopyToLCD(ctx->wf_memdev);
 }
 
 //----------------------------------------------
