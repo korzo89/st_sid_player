@@ -10,6 +10,7 @@
 #include <ff.h>
 #include <stm32746g_discovery_audio.h>
 #include <protothreads/pt.h>
+#include <string.h>
 
 //----------------------------------------------
 
@@ -24,12 +25,6 @@ enum audio_state
     AUDIO_STATE_COMPLETE
 };
 
-struct audio_sample
-{
-    uint16_t left;
-    uint16_t right;
-} ATTRIBUTE_PACKED;
-
 struct sid_ctx
 {
     enum audio_state state;
@@ -38,6 +33,7 @@ struct sid_ctx
 
     uint16_t samples[CHUNK_SIZE];
     struct audio_sample audio_buffer[CHUNK_SIZE];
+    bool buffer_ready;
 
     uint8_t file_buffer[FILE_BUFFER_SIZE];
 
@@ -52,6 +48,8 @@ static void generate_samples(size_t offset, size_t length);
 
 void sid_player_init(void)
 {
+    memset(&ctx, 0, sizeof(ctx));
+
     PT_INIT(&ctx.thread);
 }
 
@@ -175,6 +173,8 @@ static PT_THREAD(audio_thread(struct pt *pt))
         PT_WAIT_UNTIL(pt, ctx.state == AUDIO_STATE_COMPLETE);
 
         generate_samples(CHUNK_SIZE / 2, CHUNK_SIZE / 2);
+
+        ctx.buffer_ready = true;
     }
 
     PT_END(pt);
@@ -185,6 +185,28 @@ static PT_THREAD(audio_thread(struct pt *pt))
 void sid_player_process(void)
 {
     audio_thread(&ctx.thread);
+}
+
+//----------------------------------------------
+
+bool sid_player_is_buffer_ready(void)
+{
+    return ctx.buffer_ready;
+}
+
+//----------------------------------------------
+
+uint32_t sid_player_get_buffer_size(void)
+{
+    return CHUNK_SIZE;
+}
+
+//----------------------------------------------
+
+const struct audio_sample* sid_player_get_buffer(void)
+{
+    ctx.buffer_ready = false;
+    return ctx.audio_buffer;
 }
 
 //----------------------------------------------

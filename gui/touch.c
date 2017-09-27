@@ -24,8 +24,8 @@ void touch_process(void)
     ASSERT_WARN(res == TS_OK);
 
     GUI_PID_STATE pid_state = {
-        .x       = ts_state.touchX[0],
-        .y       = ts_state.touchY[0],
+        .x       = LCD_WIDTH - ts_state.touchX[0],
+        .y       = LCD_HEIGHT - ts_state.touchY[0],
         .Pressed = !!ts_state.touchDetected,
         .Layer   = 0
     };

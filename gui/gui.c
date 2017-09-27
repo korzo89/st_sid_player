@@ -36,7 +36,11 @@ void gui_init(void)
     memset(&ctx, 0, sizeof(ctx));
 
     touch_init();
+
     GUI_Init();
+
+    GUI_SetOrientation(GUI_MIRROR_X | GUI_MIRROR_Y);
+
     WM_MULTIBUF_Enable(1);
 
     WM_SelectWindow(WM_HBKWIN);

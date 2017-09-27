@@ -29,9 +29,16 @@
 #define TEXT_FONT       (&GUI_FontSegoe_UI_Semibold30)
 #define SMALL_FONT      (&GUI_FontSegoe_UI_Semibold15)
 
+#define WAVEFORM_BINS   (LCD_WIDTH / 2)
+
 struct wnd_ctx
 {
     GUI_HWIN action;
+    GUI_HWIN wnd;
+    uint32_t wf_top;
+    uint32_t wf_bottom;
+    uint32_t wf_height;
+    uint32_t wf_middle;
 };
 
 static struct wnd_ctx *ctx;
@@ -41,6 +48,8 @@ static struct wnd_ctx *ctx;
 static void create(GUI_HWIN wnd)
 {
     GUI_ALLOC_CTX(ctx);
+
+    ctx->wnd = wnd;
 
     WINDOW_SetBkColor(wnd, GUI_BLACK);
 
@@ -86,6 +95,8 @@ static void create(GUI_HWIN wnd)
     TEXT_SetFont(text, TEXT_FONT);
     TEXT_SetTextColor(text, GUI_WHITE);
 
+    ctx->wf_top = y + TEXT_FONT->YSize + 10;
+
     y = LCD_HEIGHT - SMALL_FONT->YSize - 5;
 
     text = TEXT_CreateAsChild(
@@ -94,6 +105,10 @@ static void create(GUI_HWIN wnd)
             path, TEXT_CF_HCENTER);
     TEXT_SetFont(text, SMALL_FONT);
     TEXT_SetTextColor(text, GUI_WHITE);
+
+    ctx->wf_bottom = y - 10;
+    ctx->wf_height = ctx->wf_bottom - ctx->wf_top;
+    ctx->wf_middle = ctx->wf_top + ctx->wf_height / 2;
 }
 
 //----------------------------------------------
@@ -123,9 +138,52 @@ static void handle_event(const struct gui_event *event)
 
 //----------------------------------------------
 
+static int get_waveform_y(const struct audio_sample *sample)
+{
+    int amp = (((int)sample->left - 2048) * (int)ctx->wf_height) / 4096;
+    return ctx->wf_middle + amp;
+}
+
+//----------------------------------------------
+
+static void draw_waveform(void)
+{
+    WM_SelectWindow(ctx->wnd);
+    GUI_SetColor(GUI_BLACK);
+    GUI_FillRect(0, ctx->wf_top, LCD_WIDTH, ctx->wf_bottom);
+
+    GUI_SetColor(GUI_WHITE);
+
+    uint32_t size = sid_player_get_buffer_size();
+    const struct audio_sample *buffer = sid_player_get_buffer();
+
+    const uint32_t bin_width = LCD_WIDTH / WAVEFORM_BINS;
+    uint32_t bin_skip = size / WAVEFORM_BINS;
+
+    int x = 0;
+
+    const struct audio_sample *sample = buffer;
+    GUI_MoveTo(x, get_waveform_y(sample));
+    x += bin_width;
+
+    uint32_t offset = bin_skip;
+    while (offset < size)
+    {
+        sample = &buffer[offset];
+        GUI_DrawLineTo(x, get_waveform_y(sample));
+        x += bin_width;
+        offset += bin_skip;
+    }
+}
+
+//----------------------------------------------
+
 static void process(void)
 {
     sid_player_process();
+
+    if (sid_player_is_buffer_ready())
+        draw_waveform();
 }
 
 //----------------------------------------------
